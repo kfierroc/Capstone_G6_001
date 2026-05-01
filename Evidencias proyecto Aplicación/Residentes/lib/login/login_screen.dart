@@ -43,7 +43,12 @@ class LoginScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 30),
                     ElevatedButton(
-                      onPressed: () {},
+                      onPressed: () {
+                        Navigator.of(context).pushNamedAndRemoveUntil(
+                          '/gestion-familia',
+                          (route) => false,
+                        );
+                      },
                       child: const Text("Iniciar Sesión"),
                     ),
                     const SizedBox(height: 24),

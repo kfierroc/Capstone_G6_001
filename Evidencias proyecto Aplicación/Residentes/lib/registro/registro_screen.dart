@@ -21,8 +21,11 @@ class _RegistroScreenState extends State<RegistroScreen> {
         _currentStep++;
       });
     } else {
-      // Finalizar registro
-      Navigator.pop(context);
+      // Finalizar registro: ir a Gestión Familia
+      Navigator.of(context).pushNamedAndRemoveUntil(
+        '/gestion-familia',
+        (route) => false,
+      );
     }
   }
 
