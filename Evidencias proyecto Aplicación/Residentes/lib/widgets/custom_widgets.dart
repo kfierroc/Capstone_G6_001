@@ -32,6 +32,8 @@ class CustomAppBar extends StatelessWidget {
   final String subtitle;
   final bool showBack;
   final VoidCallback? onBack;
+  /// Acción o icono a la derecha (p. ej. notificaciones en el home residente).
+  final Widget? trailing;
 
   const CustomAppBar({
     super.key,
@@ -39,6 +41,7 @@ class CustomAppBar extends StatelessWidget {
     required this.subtitle,
     this.showBack = true,
     this.onBack,
+    this.trailing,
   });
 
   @override
@@ -89,6 +92,10 @@ class CustomAppBar extends StatelessWidget {
                   ],
                 ),
               ),
+              if (trailing != null) ...[
+                const SizedBox(width: 8),
+                trailing!,
+              ],
             ],
           ),
         ],

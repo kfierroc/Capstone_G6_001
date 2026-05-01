@@ -1,5 +1,10 @@
 import 'package:flutter/material.dart';
 import 'login/login_screen.dart';
+import 'screens/gestion_familia.dart';
+import 'screens/gestion_mascotas.dart';
+import 'screens/gestion_domicilio.dart';
+import 'screens/gestion_peligrosos.dart';
+import 'screens/gestion_configuracion.dart';
 
 void main() {
   runApp(const FireDataApp());
@@ -51,6 +56,13 @@ class FireDataApp extends StatelessWidget {
           hintStyle: const TextStyle(color: Color(0xFF9E9E9E), fontSize: 14),
         ),
       ),
+      routes: {
+        '/gestion-familia': (_) => const GestionFamiliaScreen(),
+        '/gestion-mascotas': (_) => const GestionMascotasScreen(),
+        '/gestion-domicilio': (_) => const GestionDomicilioScreen(),
+        '/gestion-peligrosos': (_) => const GestionPeligrososScreen(),
+        '/gestion-configuracion': (_) => const GestionConfiguracionScreen(),
+      },
       home: const LoginScreen(),
     );
   }
