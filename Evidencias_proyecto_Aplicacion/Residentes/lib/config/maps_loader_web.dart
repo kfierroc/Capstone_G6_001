@@ -17,7 +17,8 @@ Future<void> loadGoogleMapsScript(String apiKey) async {
   final script = html.ScriptElement()
     ..id = id
     ..async = true
-    ..src = 'https://maps.googleapis.com/maps/api/js?key=$apiKey&loading=async';
+    ..src =
+        'https://maps.googleapis.com/maps/api/js?key=$apiKey&loading=async&libraries=places';
 
   script.onLoad.listen((_) {
     if (!completer.isCompleted) completer.complete();
