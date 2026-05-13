@@ -5,7 +5,8 @@ class RegistroResidenteBorrador {
   String? rutDv;
   String? telefonoNormalizado;
   DateTime? fechaNacimiento;
-  final List<String> condicionesMedicas = [];
+  /// `condiciones.id_condicion` seleccionadas para el titular (paso 2).
+  final List<int> idsCondiciones = [];
 
   /// Paso 3 — domicilio
   String? calle;
@@ -18,6 +19,8 @@ class RegistroResidenteBorrador {
   int? mesesTiempoResidencia;
   String? tipoViviendaEtiqueta;
   String? estadoViviendaEtiqueta;
+  /// Solo departamento/condominio → columna `desc_depto_cond` (máx. 50 en BD).
+  String? descDeptoCond;
   String? notasVivienda;
   final List<PisoBorrador> pisos = [];
 }

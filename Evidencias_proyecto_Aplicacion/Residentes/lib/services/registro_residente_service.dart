@@ -130,6 +130,8 @@ class RegistroResidenteService {
     final hoy = _soloFecha(DateTime.now());
     final fechaExp = _soloFecha(DateTime(DateTime.now().year, DateTime.now().month + meses, DateTime.now().day));
     final notas = _trunc(d.notasVivienda ?? '', 100);
+    final descDepto = _trunc(d.descDeptoCond?.trim() ?? '', 50);
+    final descDeptoValor = descDepto.isEmpty ? null : descDepto;
 
     final idGf = await _siguienteId('grupofamiliar', 'id_grupof');
     final idRes = await _siguienteId('residencia', 'id_residencia');
@@ -137,7 +139,8 @@ class RegistroResidenteService {
     final idInt = await _siguienteId('integrante', 'id_integrante');
 
     final unidadTrim = d.unidad?.trim();
-    final unidadValor = (unidadTrim == null || unidadTrim.isEmpty) ? null : unidadTrim;
+    final unidadValor =
+        (unidadTrim == null || unidadTrim.isEmpty) ? null : _trunc(unidadTrim, 20);
 
     try {
       await _client.from('grupofamiliar').insert({
@@ -153,10 +156,8 @@ class RegistroResidenteService {
         'id_residencia': idRes,
         'calle': d.calle!.trim(),
         'nro_direccion': d.nroDireccion,
-        'unidad': unidadValor,
         'lat': d.lat,
         'lon': d.lon,
-        'geom_r': 'SRID=4326;POINT(${d.lon} ${d.lat})',
         'cut_com': cutCom,
       });
 
@@ -165,6 +166,8 @@ class RegistroResidenteService {
         'vigente': true,
         'id_estado_v': idEstado,
         'id_tipo_v': idTipo,
+        'unidad': unidadValor,
+        'desc_depto_cond': descDeptoValor,
         'notas_v': notas.isEmpty ? null : notas,
         'fecha_ult_confirm': _isoFecha(hoy),
         'fecha_expiracion': _isoFecha(fechaExp),
@@ -178,24 +181,17 @@ class RegistroResidenteService {
         'id_integrante': idInt,
         'is_titular': true,
         'anio_nac': d.fechaNacimiento!.year,
-        'activo_i': true,
         'fecha_ini_i': _isoFecha(hoy),
         'fecha_fin_i': null,
         'id_grupof': idGf,
       });
 
-      final padecimientosVistos = <String>{};
-      for (final cond in d.condicionesMedicas) {
-        final c = cond.trim();
-        if (c.isEmpty) continue;
-        final clave = _trunc(c, 46);
-        if (!padecimientosVistos.add(clave)) continue;
-        await _client.from('padecimiento').insert({
-          'padecimiento': clave,
-          'fecha_ini_p': _isoFecha(hoy),
-          'durabilidad': 365,
-          'fecha_fin_p': null,
+      final condicionesUnicas = d.idsCondiciones.toSet();
+      for (final idCond in condicionesUnicas) {
+        await _client.from('condiciones_integ').insert({
           'id_integrante': idInt,
+          'id_condicion': idCond,
+          'observacion': null,
         });
       }
 

@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+
+import '../models/condiciones_catalogo.dart';
+import '../services/catalogos_residente_service.dart';
 import '../widgets/custom_widgets.dart';
 
 /// Home del residente: barra superior verde + contenido en tarjeta blanca + navegación inferior.
-/// La lógica de familia es solo local (maqueta, sin integraciones).
+/// Condiciones por integrante: catálogo `categ_condiciones` / `condiciones` desde Supabase (maqueta de miembros local).
 class GestionFamiliaScreen extends StatefulWidget {
   const GestionFamiliaScreen({super.key});
 
@@ -23,51 +27,76 @@ class _GestionFamiliaScreenState extends State<GestionFamiliaScreen> {
   static const _bordeVerde = Color(0xFFB6DFB8);
   static const _inputFill = Color(0xFFF9FAFB);
 
-  static const Map<String, List<String>> _categorias = {
-    'Enfermedades Crónicas': [
-      'Epilepsia',
-      'Asma o problemas para respirar',
-      'Problemas del corazón',
-    ],
-    'Movilidad y Sentidos': [
-      'Persona postrada',
-      'Usa silla de ruedas',
-      'Dificultad para moverse o caminar',
-      'Problemas de vista',
-      'Problemas de audición',
-      'Vértigo o pérdida de equilibrio',
-    ],
-  };
-
   final _anioController = TextEditingController(text: '1990');
-  final _otraCondController = TextEditingController();
 
-  final Map<String, bool> _expandido = {
-    'Enfermedades Crónicas': false,
-    'Movilidad y Sentidos': false,
-  };
+  List<CategoriaCondicion> _categorias = [];
+  bool _catalogLoading = true;
+  String? _catalogError;
 
-  final Set<String> _seleccionadas = {'Asma o problemas para respirar'};
+  /// `id_categ_c` → panel expandido
+  final Map<int, bool> _expandido = {};
+
+  /// `condiciones.id_condicion` seleccionadas en el formulario nuevo integrante
+  final Set<int> _seleccionadasIds = {9};
 
   final List<_MiembroLocal> _miembros = [
     _MiembroLocal(
       rol: 'Titular',
       anioNacimiento: 1979,
-      condiciones: ['Diabetes', 'Problemas cardíacos'],
+      idsCondiciones: [10, 14],
     ),
     _MiembroLocal(
       rol: 'Residente 2',
       anioNacimiento: 1977,
-      condiciones: ['Movilidad reducida'],
+      idsCondiciones: [3],
     ),
   ];
 
   int _contadorResidentes = 3;
 
   @override
+  void initState() {
+    super.initState();
+    _cargarCatalogoCondiciones();
+  }
+
+  Future<void> _cargarCatalogoCondiciones() async {
+    setState(() {
+      _catalogLoading = true;
+      _catalogError = null;
+    });
+    try {
+      final list = await CatalogosResidenteService(Supabase.instance.client).condicionesPorCategoria();
+      if (!mounted) return;
+      setState(() {
+        _categorias = list;
+        for (final c in list) {
+          _expandido.putIfAbsent(c.idCategC, () => false);
+        }
+        _catalogLoading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _catalogError = e.toString();
+        _catalogLoading = false;
+      });
+    }
+  }
+
+  Map<int, String> get _etiquetaCondicionPorId {
+    final m = <int, String>{};
+    for (final cat in _categorias) {
+      for (final co in cat.condiciones) {
+        m[co.idCondicion] = co.tipoCondicion;
+      }
+    }
+    return m;
+  }
+
+  @override
   void dispose() {
     _anioController.dispose();
-    _otraCondController.dispose();
     super.dispose();
   }
 
@@ -84,9 +113,8 @@ class _GestionFamiliaScreenState extends State<GestionFamiliaScreen> {
 
   void _limpiarFormulario() {
     _anioController.text = '1990';
-    _otraCondController.clear();
-    _seleccionadas.clear();
-    for (final k in _expandido.keys) {
+    _seleccionadasIds.clear();
+    for (final k in _expandido.keys.toList()) {
       _expandido[k] = false;
     }
   }
@@ -97,7 +125,7 @@ class _GestionFamiliaScreenState extends State<GestionFamiliaScreen> {
       _snack('Ingresa un año de nacimiento válido.');
       return;
     }
-    if (_seleccionadas.isEmpty) {
+    if (_seleccionadasIds.isEmpty) {
       _snack('Selecciona al menos una condición.');
       return;
     }
@@ -106,7 +134,7 @@ class _GestionFamiliaScreenState extends State<GestionFamiliaScreen> {
         _MiembroLocal(
           rol: 'Residente $_contadorResidentes',
           anioNacimiento: anio,
-          condiciones: List<String>.from(_seleccionadas),
+          idsCondiciones: List<int>.from(_seleccionadasIds),
         ),
       );
       _contadorResidentes++;
@@ -118,8 +146,8 @@ class _GestionFamiliaScreenState extends State<GestionFamiliaScreen> {
   void _editarMiembro(int index) {
     final m = _miembros[index];
     final anioEdit = TextEditingController(text: '${m.anioNacimiento}');
-    final condEdit = Set<String>.from(m.condiciones);
-    final expEdit = Map<String, bool>.from(_expandido);
+    final condEdit = Set<int>.from(m.idsCondiciones);
+    final expEdit = Map<int, bool>.from(_expandido);
 
     showDialog<void>(
       context: context,
@@ -157,22 +185,23 @@ class _GestionFamiliaScreenState extends State<GestionFamiliaScreen> {
                       style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
                     ),
                     const SizedBox(height: 8),
-                    ..._categorias.entries.map((entry) {
+                    ..._categorias.asMap().entries.map((entry) {
+                      final cat = entry.value;
                       return Padding(
                         padding: const EdgeInsets.only(bottom: 8),
                         child: _buildCategoriaTile(
-                          titulo: entry.key,
-                          opciones: entry.value,
+                          categoria: cat,
+                          colorIndex: entry.key,
                           seleccionadas: condEdit,
-                          expandido: expEdit[entry.key] ?? false,
+                          expandido: expEdit[cat.idCategC] ?? false,
                           onToggleExpand: () => setDialog(
-                            () => expEdit[entry.key] = !(expEdit[entry.key] ?? false),
+                            () => expEdit[cat.idCategC] = !(expEdit[cat.idCategC] ?? false),
                           ),
-                          onToggleItem: (item) => setDialog(() {
-                            if (condEdit.contains(item)) {
-                              condEdit.remove(item);
+                          onToggleItem: (idCond) => setDialog(() {
+                            if (condEdit.contains(idCond)) {
+                              condEdit.remove(idCond);
                             } else {
-                              condEdit.add(item);
+                              condEdit.add(idCond);
                             }
                           }),
                         ),
@@ -196,7 +225,7 @@ class _GestionFamiliaScreenState extends State<GestionFamiliaScreen> {
                   }
                   setState(() {
                     m.anioNacimiento = anio;
-                    m.condiciones = condEdit.toList();
+                    m.idsCondiciones = condEdit.toList();
                   });
                   Navigator.pop(context);
                   _snack('Cambios aplicados en la maqueta.');
@@ -364,34 +393,60 @@ class _GestionFamiliaScreenState extends State<GestionFamiliaScreen> {
                       ),
                     ),
                     const SizedBox(height: 16),
-                    ..._categorias.entries.map((entry) {
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 8),
-                        child: _buildCategoriaTile(
-                          titulo: entry.key,
-                          opciones: entry.value,
-                          seleccionadas: _seleccionadas,
-                          expandido: _expandido[entry.key] ?? false,
-                          onToggleExpand: () => setState(
-                            () => _expandido[entry.key] = !(_expandido[entry.key] ?? false),
+                    if (_catalogLoading)
+                      const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 24),
+                        child: Center(child: CircularProgressIndicator()),
+                      )
+                    else if (_catalogError != null)
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Text(
+                            'No se pudieron cargar las condiciones.\n$_catalogError',
+                            style: const TextStyle(color: Colors.red, fontSize: 12),
                           ),
-                          onToggleItem: (item) => setState(() {
-                            if (_seleccionadas.contains(item)) {
-                              _seleccionadas.remove(item);
-                            } else {
-                              _seleccionadas.add(item);
-                            }
-                          }),
-                        ),
-                      );
-                    }),
-                    _buildOtraCondicion(),
+                          const SizedBox(height: 8),
+                          OutlinedButton.icon(
+                            onPressed: _cargarCatalogoCondiciones,
+                            icon: const Icon(Icons.refresh, size: 18),
+                            label: const Text('Reintentar'),
+                          ),
+                        ],
+                      )
+                    else
+                      ..._categorias.asMap().entries.map((entry) {
+                        final cat = entry.value;
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 8),
+                          child: _buildCategoriaTile(
+                            categoria: cat,
+                            colorIndex: entry.key,
+                            seleccionadas: _seleccionadasIds,
+                            expandido: _expandido[cat.idCategC] ?? false,
+                            onToggleExpand: () => setState(
+                              () => _expandido[cat.idCategC] = !(_expandido[cat.idCategC] ?? false),
+                            ),
+                            onToggleItem: (idCond) => setState(() {
+                              if (_seleccionadasIds.contains(idCond)) {
+                                _seleccionadasIds.remove(idCond);
+                              } else {
+                                _seleccionadasIds.add(idCond);
+                              }
+                            }),
+                          ),
+                        );
+                      }),
                     const SizedBox(height: 16),
                     SizedBox(
                       width: double.infinity,
                       height: 48,
                       child: ElevatedButton.icon(
-                        onPressed: _agregarResidenteMaqueta,
+                        onPressed: (_catalogLoading ||
+                                _catalogError != null ||
+                                _categorias.isEmpty)
+                            ? null
+                            : _agregarResidenteMaqueta,
                         icon: const Icon(Icons.add, size: 20),
                         label: const Text(
                           'Agregar Residente',
@@ -513,21 +568,17 @@ class _GestionFamiliaScreenState extends State<GestionFamiliaScreen> {
   }
 
   Widget _buildCategoriaTile({
-    required String titulo,
-    required List<String> opciones,
-    required Set<String> seleccionadas,
+    required CategoriaCondicion categoria,
+    required int colorIndex,
+    required Set<int> seleccionadas,
     required bool expandido,
     required VoidCallback onToggleExpand,
-    required ValueChanged<String> onToggleItem,
+    required ValueChanged<int> onToggleItem,
   }) {
-    final esEnfermedad = titulo == 'Enfermedades Crónicas';
-    final colorTitulo = esEnfermedad ? _rojoCat : _naranjaCat;
-    final colorFondo = esEnfermedad
-        ? const Color(0xFFFFF0EE)
-        : const Color(0xFFFFF8F0);
-    final colorBorde = esEnfermedad
-        ? const Color(0xFFFFD5D0)
-        : const Color(0xFFFFE5C8);
+    final esPar = colorIndex % 2 == 0;
+    final colorTitulo = esPar ? _rojoCat : _naranjaCat;
+    final colorFondo = esPar ? const Color(0xFFFFF0EE) : const Color(0xFFFFF8F0);
+    final colorBorde = esPar ? const Color(0xFFFFD5D0) : const Color(0xFFFFE5C8);
 
     return Column(
       children: [
@@ -547,7 +598,7 @@ class _GestionFamiliaScreenState extends State<GestionFamiliaScreen> {
                 children: [
                   Expanded(
                     child: Text(
-                      titulo,
+                      categoria.categoriaC,
                       style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w600,
@@ -575,12 +626,12 @@ class _GestionFamiliaScreenState extends State<GestionFamiliaScreen> {
               border: Border.all(color: colorBorde),
             ),
             child: Column(
-              children: opciones.map((opcion) {
-                final marcado = seleccionadas.contains(opcion);
+              children: categoria.condiciones.map((cond) {
+                final marcado = seleccionadas.contains(cond.idCondicion);
                 return Material(
                   color: Colors.transparent,
                   child: InkWell(
-                    onTap: () => onToggleItem(opcion),
+                    onTap: () => onToggleItem(cond.idCondicion),
                     borderRadius: BorderRadius.circular(8),
                     child: Padding(
                       padding: const EdgeInsets.symmetric(vertical: 6),
@@ -604,7 +655,7 @@ class _GestionFamiliaScreenState extends State<GestionFamiliaScreen> {
                           const SizedBox(width: 12),
                           Expanded(
                             child: Text(
-                              opcion,
+                              cond.tipoCondicion,
                               style: const TextStyle(fontSize: 14, color: _textoPrincipal),
                             ),
                           ),
@@ -617,60 +668,6 @@ class _GestionFamiliaScreenState extends State<GestionFamiliaScreen> {
             ),
           ),
       ],
-    );
-  }
-
-  Widget _buildOtraCondicion() {
-    return Container(
-      margin: const EdgeInsets.only(top: 8),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: _bordeGris),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Otra condición especial',
-            style: TextStyle(fontSize: 13, color: _textoGris),
-          ),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  controller: _otraCondController,
-                  style: const TextStyle(fontSize: 13, color: _textoPrincipal),
-                  decoration: const InputDecoration(
-                    hintText: 'Describe otra condición relevante',
-                    hintStyle: TextStyle(color: _textoGris, fontSize: 12),
-                    border: InputBorder.none,
-                    isDense: true,
-                    contentPadding: EdgeInsets.zero,
-                  ),
-                ),
-              ),
-              IconButton(
-                onPressed: () {
-                  final val = _otraCondController.text.trim();
-                  if (val.isEmpty) return;
-                  setState(() {
-                    _seleccionadas.add(val);
-                    _otraCondController.clear();
-                  });
-                },
-                style: IconButton.styleFrom(
-                  backgroundColor: const Color(0xFFF0F0F0),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                ),
-                icon: const Icon(Icons.add, size: 18, color: _textoGris),
-              ),
-            ],
-          ),
-        ],
-      ),
     );
   }
 
@@ -712,7 +709,7 @@ class _GestionFamiliaScreenState extends State<GestionFamiliaScreen> {
                   'Año de nacimiento: ${m.anioNacimiento}',
                   style: const TextStyle(fontSize: 12, color: _textoGris),
                 ),
-                if (m.condiciones.isNotEmpty) ...[
+                if (m.idsCondiciones.isNotEmpty) ...[
                   const SizedBox(height: 8),
                   const Text(
                     'Condiciones:',
@@ -722,7 +719,8 @@ class _GestionFamiliaScreenState extends State<GestionFamiliaScreen> {
                   Wrap(
                     spacing: 6,
                     runSpacing: 4,
-                    children: m.condiciones.map((c) {
+                    children: m.idsCondiciones.map((id) {
+                      final texto = _etiquetaCondicionPorId[id] ?? '#$id';
                       return Container(
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                         decoration: BoxDecoration(
@@ -731,7 +729,7 @@ class _GestionFamiliaScreenState extends State<GestionFamiliaScreen> {
                           border: Border.all(color: _bordeGris),
                         ),
                         child: Text(
-                          c,
+                          texto,
                           style: const TextStyle(fontSize: 11, color: _textoPrincipal),
                         ),
                       );
@@ -777,12 +775,12 @@ class _MiembroLocal {
   _MiembroLocal({
     required this.rol,
     required this.anioNacimiento,
-    required this.condiciones,
+    required this.idsCondiciones,
   });
 
   final String rol;
   int anioNacimiento;
-  List<String> condiciones;
+  List<int> idsCondiciones;
 
   int get edadAproximada {
     final year = DateTime.now().year;

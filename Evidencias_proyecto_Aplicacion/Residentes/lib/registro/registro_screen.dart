@@ -102,8 +102,11 @@ class _RegistroScreenState extends State<RegistroScreen> {
           StepIndicator(currentStep: _currentStep),
           Expanded(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.only(bottom: 20),
+              padding: EdgeInsets.only(
+                bottom: _currentStep == 3 ? 32 : 24,
+              ),
               child: ResponsiveContainer(
+                maxWidth: _currentStep == 3 ? 1240 : null,
                 child: _buildCurrentStep(),
               ),
             ),

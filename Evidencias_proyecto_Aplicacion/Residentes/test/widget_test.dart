@@ -28,9 +28,8 @@ void main() {
     expect(find.text('RUT (Titular)'), findsOneWidget);
     expect(find.text('Teléfono'), findsOneWidget);
     
-    // Verificar que existen las secciones de condiciones médicas
-    expect(find.text('Enfermedades Crónicas'), findsOneWidget);
-    expect(find.text('Movilidad y Sentidos'), findsOneWidget);
+    // Catálogo de condiciones (desde BD): al menos el bloque del paso 2
+    expect(find.text('Condiciones médicas o especiales'), findsOneWidget);
 
     // Botón Continuar en Paso 2
     expect(find.widgetWithText(ElevatedButton, 'Continuar'), findsOneWidget);
