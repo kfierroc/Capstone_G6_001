@@ -2,7 +2,10 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../models/condiciones_catalogo.dart';
+import '../services/catalogos_residente_service.dart';
 import '../widgets/chile_rut_formatter.dart';
 import '../widgets/custom_widgets.dart';
 import 'registro_models.dart';
@@ -25,40 +28,65 @@ class RegistroPaso2 extends StatefulWidget {
 
 class _RegistroPaso2State extends State<RegistroPaso2> {
   final _rutController = TextEditingController();
-  /// Solo 9 dígitos después de +56 (móvil chileno).
   final _telefonoSufijoController = TextEditingController();
-  /// Solo año de nacimiento (modelo sigue usando `fechaNacimiento` como 1 de enero de ese año).
+
   int? _anioNacimiento;
   int? _edadPorAnio;
 
-  final List<String> _selectedConditions = [];
+  final Set<int> _selectedCondicionIds = {};
 
-  final Map<String, bool> _cronicasOptions = {
-    "Epilepsia": false,
-    "Asma o problemas para respirar": false,
-    "Problemas del corazón": false,
-  };
+  bool _catalogLoading = true;
+  String? _catalogError;
+  List<CategoriaCondicion> _categorias = [];
+  final Map<int, bool> _categoriaExpandida = {};
 
-  final Map<String, bool> _movilidadOptions = {
-    "Persona postrada": false,
-    "Usa silla de ruedas": false,
-    "Dificultad para moverse o caminar": false,
-    "Problemas de vista": false,
-    "Problemas de audición": false,
-    "Vértigo o pérdida de equilibrio": false,
-  };
-
-  bool _isCronicaExpanded = false;
-  bool _isMovilidadExpanded = false;
-
-  final TextEditingController _otraCondicionController = TextEditingController();
+  @override
+  void initState() {
+    super.initState();
+    _cargarCatalogoCondiciones();
+  }
 
   @override
   void dispose() {
     _rutController.dispose();
     _telefonoSufijoController.dispose();
-    _otraCondicionController.dispose();
     super.dispose();
+  }
+
+  Future<void> _cargarCatalogoCondiciones() async {
+    setState(() {
+      _catalogLoading = true;
+      _catalogError = null;
+    });
+    try {
+      final svc = CatalogosResidenteService(Supabase.instance.client);
+      final list = await svc.condicionesPorCategoria();
+      if (!mounted) return;
+      setState(() {
+        _categorias = list;
+        for (final c in list) {
+          _categoriaExpandida.putIfAbsent(c.idCategC, () => false);
+        }
+        _selectedCondicionIds.addAll(widget.draft.idsCondiciones);
+        _catalogLoading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _catalogError = e.toString();
+        _catalogLoading = false;
+      });
+    }
+  }
+
+  Map<int, String> get _etiquetaPorId {
+    final m = <int, String>{};
+    for (final cat in _categorias) {
+      for (final co in cat.condiciones) {
+        m[co.idCondicion] = co.tipoCondicion;
+      }
+    }
+    return m;
   }
 
   void _showSnack(String m) {
@@ -81,34 +109,14 @@ class _RegistroPaso2State extends State<RegistroPaso2> {
     return [for (var a = maxAnio; a >= minAnio; a--) a];
   }
 
-  void _toggleCondition(String condition, bool isCronica) {
+  void _toggleCondicion(int idCondicion) {
     setState(() {
-      if (isCronica) {
-        _cronicasOptions[condition] = !(_cronicasOptions[condition]!);
-        if (_cronicasOptions[condition]!) {
-          if (!_selectedConditions.contains(condition)) _selectedConditions.add(condition);
-        } else {
-          _selectedConditions.remove(condition);
-        }
+      if (_selectedCondicionIds.contains(idCondicion)) {
+        _selectedCondicionIds.remove(idCondicion);
       } else {
-        _movilidadOptions[condition] = !(_movilidadOptions[condition]!);
-        if (_movilidadOptions[condition]!) {
-          if (!_selectedConditions.contains(condition)) _selectedConditions.add(condition);
-        } else {
-          _selectedConditions.remove(condition);
-        }
+        _selectedCondicionIds.add(idCondicion);
       }
     });
-  }
-
-  void _addManualCondition() {
-    String text = _otraCondicionController.text.trim();
-    if (text.isNotEmpty && !_selectedConditions.contains(text)) {
-      setState(() {
-        _selectedConditions.add(text);
-        _otraCondicionController.clear();
-      });
-    }
   }
 
   void _continuar() {
@@ -137,15 +145,96 @@ class _RegistroPaso2State extends State<RegistroPaso2> {
     d.rutDv = rut.dv;
     d.telefonoNormalizado = tel;
     d.fechaNacimiento = DateTime(_anioNacimiento!, 1, 1);
-    d.condicionesMedicas
+    d.idsCondiciones
       ..clear()
-      ..addAll(_selectedConditions);
+      ..addAll(_selectedCondicionIds);
 
     widget.onNext();
   }
 
   @override
   Widget build(BuildContext context) {
+    final etiquetas = _etiquetaPorId;
+
+    Widget bloqueCondiciones;
+    if (_catalogLoading) {
+      bloqueCondiciones = const Padding(
+        padding: EdgeInsets.symmetric(vertical: 24),
+        child: Center(child: CircularProgressIndicator()),
+      );
+    } else if (_catalogError != null) {
+      bloqueCondiciones = Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            'No se pudieron cargar las condiciones desde la base de datos.\n$_catalogError',
+            style: const TextStyle(color: Colors.red, fontSize: 13),
+          ),
+          const SizedBox(height: 12),
+          OutlinedButton.icon(
+            onPressed: _cargarCatalogoCondiciones,
+            icon: const Icon(Icons.refresh),
+            label: const Text('Reintentar'),
+          ),
+        ],
+      );
+    } else {
+      bloqueCondiciones = Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          ..._categorias.asMap().entries.map((entry) {
+            final i = entry.key;
+            final cat = entry.value;
+            final exp = _categoriaExpandida[cat.idCategC] ?? false;
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: _buildCategoriaPanel(
+                categoria: cat,
+                colorIndex: i,
+                isExpanded: exp,
+                onToggle: () => setState(
+                  () => _categoriaExpandida[cat.idCategC] = !exp,
+                ),
+              ),
+            );
+          }),
+          const SizedBox(height: 20),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF0F7FF),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: const Color(0xFFD0E3FF)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  "Condiciones seleccionadas:",
+                  style: TextStyle(color: Color(0xFF2C5BA9), fontWeight: FontWeight.bold, fontSize: 13),
+                ),
+                const SizedBox(height: 12),
+                if (_selectedCondicionIds.isEmpty)
+                  const Text("Ninguna seleccionada", style: TextStyle(color: Colors.grey, fontSize: 12))
+                else
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: _selectedCondicionIds.map((id) {
+                      final label = etiquetas[id] ?? '#$id';
+                      return _buildChip(label, () {
+                        setState(() => _selectedCondicionIds.remove(id));
+                      });
+                    }).toList(),
+                  ),
+              ],
+            ),
+          ),
+        ],
+      );
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -229,82 +318,13 @@ class _RegistroPaso2State extends State<RegistroPaso2> {
           "Condiciones médicas o especiales",
           style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
         ),
+        const SizedBox(height: 4),
+        const Text(
+          "Opciones del catálogo municipal (puedes elegir varias). Si no aplica, deja sin marcar.",
+          style: TextStyle(color: Colors.grey, fontSize: 12),
+        ),
         const SizedBox(height: 12),
-        _buildExpandablePanel(
-          title: "Enfermedades Crónicas",
-          color: Colors.red.shade900,
-          bgColor: const Color(0xFFFFEBEE),
-          isExpanded: _isCronicaExpanded,
-          onToggle: () => setState(() => _isCronicaExpanded = !_isCronicaExpanded),
-          options: _cronicasOptions,
-          isCronica: true,
-        ),
-        const SizedBox(height: 8),
-        _buildExpandablePanel(
-          title: "Movilidad y Sentidos",
-          color: Colors.orange.shade900,
-          bgColor: const Color(0xFFFFF3E0),
-          isExpanded: _isMovilidadExpanded,
-          onToggle: () => setState(() => _isMovilidadExpanded = !_isMovilidadExpanded),
-          options: _movilidadOptions,
-          isCronica: false,
-        ),
-        const SizedBox(height: 20),
-        const Text("Otra condición especial", style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
-        const SizedBox(height: 8),
-        Row(
-          children: [
-            Expanded(
-              child: TextField(
-                controller: _otraCondicionController,
-                decoration: const InputDecoration(
-                  hintText: "Diabetes",
-                  fillColor: Color(0xFFF1F4F8),
-                ),
-              ),
-            ),
-            const SizedBox(width: 8),
-            Container(
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.grey.shade300),
-              ),
-              child: IconButton(
-                icon: const Icon(Icons.add, color: Colors.black),
-                onPressed: _addManualCondition,
-              ),
-            )
-          ],
-        ),
-        const SizedBox(height: 20),
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: const Color(0xFFF0F7FF),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: const Color(0xFFD0E3FF)),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                "Condiciones seleccionadas:",
-                style: TextStyle(color: Color(0xFF2C5BA9), fontWeight: FontWeight.bold, fontSize: 13),
-              ),
-              const SizedBox(height: 12),
-              if (_selectedConditions.isEmpty)
-                const Text("Ninguna seleccionada", style: TextStyle(color: Colors.grey, fontSize: 12))
-              else
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: _selectedConditions.map((condition) => _buildChip(condition)).toList(),
-                ),
-            ],
-          ),
-        ),
+        bloqueCondiciones,
         const SizedBox(height: 30),
         Row(
           children: [
@@ -327,15 +347,16 @@ class _RegistroPaso2State extends State<RegistroPaso2> {
     );
   }
 
-  Widget _buildExpandablePanel({
-    required String title,
-    required Color color,
-    required Color bgColor,
+  Widget _buildCategoriaPanel({
+    required CategoriaCondicion categoria,
+    required int colorIndex,
     required bool isExpanded,
     required VoidCallback onToggle,
-    required Map<String, bool> options,
-    required bool isCronica,
   }) {
+    final esPar = colorIndex % 2 == 0;
+    final color = esPar ? Colors.red.shade900 : Colors.orange.shade900;
+    final bgColor = esPar ? const Color(0xFFFFEBEE) : const Color(0xFFFFF3E0);
+
     return Column(
       children: [
         InkWell(
@@ -351,7 +372,12 @@ class _RegistroPaso2State extends State<RegistroPaso2> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(title, style: TextStyle(color: color, fontWeight: FontWeight.bold)),
+                Expanded(
+                  child: Text(
+                    categoria.categoriaC,
+                    style: TextStyle(color: color, fontWeight: FontWeight.bold),
+                  ),
+                ),
                 Icon(isExpanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down, color: Colors.black),
               ],
             ),
@@ -367,13 +393,13 @@ class _RegistroPaso2State extends State<RegistroPaso2> {
               borderRadius: const BorderRadius.vertical(bottom: Radius.circular(10)),
             ),
             child: Column(
-              children: options.keys.map((option) {
+              children: categoria.condiciones.map((cond) {
                 return CheckboxListTile(
-                  title: Text(option, style: const TextStyle(fontSize: 14)),
-                  value: options[option],
+                  title: Text(cond.tipoCondicion, style: const TextStyle(fontSize: 14)),
+                  value: _selectedCondicionIds.contains(cond.idCondicion),
                   activeColor: Colors.black,
                   controlAffinity: ListTileControlAffinity.leading,
-                  onChanged: (val) => _toggleCondition(option, isCronica),
+                  onChanged: (_) => _toggleCondicion(cond.idCondicion),
                   contentPadding: EdgeInsets.zero,
                   visualDensity: VisualDensity.compact,
                 );
@@ -384,7 +410,7 @@ class _RegistroPaso2State extends State<RegistroPaso2> {
     );
   }
 
-  Widget _buildChip(String label) {
+  Widget _buildChip(String label, VoidCallback onRemove) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
@@ -398,13 +424,7 @@ class _RegistroPaso2State extends State<RegistroPaso2> {
           Text(label, style: const TextStyle(color: Color(0xFF1976D2), fontSize: 12, fontWeight: FontWeight.w500)),
           const SizedBox(width: 4),
           InkWell(
-            onTap: () {
-              setState(() {
-                _selectedConditions.remove(label);
-                if (_cronicasOptions.containsKey(label)) _cronicasOptions[label] = false;
-                if (_movilidadOptions.containsKey(label)) _movilidadOptions[label] = false;
-              });
-            },
+            onTap: onRemove,
             child: const Icon(Icons.close, size: 14, color: Color(0xFF1976D2)),
           ),
         ],

@@ -29,13 +29,22 @@ class RegistroPaso4 extends StatefulWidget {
 class _RegistroPaso4State extends State<RegistroPaso4> {
   static const List<int> _mesesPermitidos = [1, 2, 3, 4, 5, 6];
 
+  /// Debe coincidir con `tipo_vivienda.tipo_v` en la base de datos.
+  static const String _tipoDepartamento = 'Departamento';
+  static const String _tipoCondominio = 'Condominio';
+
+  /// Pisos seleccionables para departamento (`piso_v.numerop`).
+  static final List<int> _numerosPisoDepartamento = List<int>.generate(60, (i) => i + 1);
+
   String? _selectedTipo;
   String? _selectedEstado;
   String? _selectedMaterial;
+  int? _numeropDepartamento;
   /// Meses de permanencia (1–6); definido solo en el front.
   int? _mesesTiempo;
   final List<Map<String, String>> _floors = [];
   final _notasController = TextEditingController();
+  final _descDeptoCondController = TextEditingController();
 
   bool _catalogLoading = true;
   String? _catalogError;
@@ -52,7 +61,26 @@ class _RegistroPaso4State extends State<RegistroPaso4> {
   @override
   void dispose() {
     _notasController.dispose();
+    _descDeptoCondController.dispose();
     super.dispose();
+  }
+
+  bool _esDepartamento(String? t) => t != null && t.trim() == _tipoDepartamento;
+
+  bool _esCondominio(String? t) => t != null && t.trim() == _tipoCondominio;
+
+  bool _esDeptoOCondominio(String? t) => _esDepartamento(t) || _esCondominio(t);
+
+  void _onTipoViviendaChanged(String? val) {
+    setState(() {
+      _selectedTipo = val;
+      _floors.clear();
+      _numeropDepartamento = null;
+      _selectedMaterial = null;
+      if (!_esDeptoOCondominio(val)) {
+        _descDeptoCondController.clear();
+      }
+    });
   }
 
   Future<void> _cargarCatalogos() async {
@@ -117,12 +145,26 @@ class _RegistroPaso4State extends State<RegistroPaso4> {
       _showSnack('Selecciona el tipo de vivienda.');
       return;
     }
-    if (_floors.isEmpty) {
+    final esDept = _esDepartamento(_selectedTipo);
+    if (esDept) {
+      if (_numeropDepartamento == null) {
+        _showSnack('Selecciona el número de piso de tu departamento.');
+        return;
+      }
+      if (_selectedMaterial == null) {
+        _showSnack('Selecciona el material del piso.');
+        return;
+      }
+    } else if (_floors.isEmpty) {
       _showSnack('Agrega al menos un piso con su material.');
       return;
     }
     if (_selectedEstado == null) {
       _showSnack('Selecciona el estado de la vivienda.');
+      return;
+    }
+    if (_esDeptoOCondominio(_selectedTipo) && _descDeptoCondController.text.trim().isEmpty) {
+      _showSnack('Ingresa la descripción de departamento o condominio.');
       return;
     }
 
@@ -131,20 +173,52 @@ class _RegistroPaso4State extends State<RegistroPaso4> {
     d.tipoViviendaEtiqueta = _selectedTipo;
     d.estadoViviendaEtiqueta = _selectedEstado;
     d.notasVivienda = _notasController.text.trim().isEmpty ? null : _notasController.text.trim();
-    d.pisos
-      ..clear()
-      ..addAll(
+    final descTrim = _descDeptoCondController.text.trim();
+    d.descDeptoCond = _esDeptoOCondominio(_selectedTipo) ? descTrim : null;
+
+    d.pisos.clear();
+    if (esDept) {
+      d.pisos.add(
+        PisoBorrador(
+          numerop: _numeropDepartamento!,
+          materialEtiqueta: _selectedMaterial!,
+        ),
+      );
+    } else {
+      d.pisos.addAll(
         _floors.map((f) {
           final n = int.parse(f['number']!);
           return PisoBorrador(numerop: n, materialEtiqueta: f['material']!);
         }),
       );
+    }
 
     await widget.onComplete();
   }
 
   List<DropdownMenuItem<String>> _itemsDesde(List<String> opciones) {
     return opciones.map((e) => DropdownMenuItem<String>(value: e, child: Text(e))).toList();
+  }
+
+  /// Habilita “Completar”: departamento con piso+material; otros tipos con al menos un piso agregado.
+  bool get _formularioPisosListo {
+    final t = _selectedTipo;
+    if (t == null) return false;
+    if (_esDepartamento(t)) {
+      return _numeropDepartamento != null && _selectedMaterial != null;
+    }
+    return _floors.isNotEmpty;
+  }
+
+  String _resumenPisosTexto() {
+    final t = _selectedTipo;
+    if (t == null) return 'No especificado';
+    if (_esDepartamento(t)) {
+      final n = _numeropDepartamento;
+      return n == null ? 'No especificado' : 'Piso $n (1 registro)';
+    }
+    if (_floors.isEmpty) return 'No especificado';
+    return '${_floors.length}';
   }
 
   @override
@@ -242,8 +316,20 @@ class _RegistroPaso4State extends State<RegistroPaso4> {
                 value: _selectedTipo,
                 decoration: const InputDecoration(hintText: "Selecciona el tipo de vivienda"),
                 items: _itemsDesde(_tiposVivienda),
-                onChanged: (val) => setState(() => _selectedTipo = val),
+                onChanged: _onTipoViviendaChanged,
               ),
+        if (_esDeptoOCondominio(_selectedTipo)) ...[
+          const SizedBox(height: 16),
+          const InputLabel(label: "Descripción departamento / condominio", required: true),
+          TextField(
+            controller: _descDeptoCondController,
+            maxLength: 50,
+            onChanged: (_) => setState(() {}),
+            decoration: const InputDecoration(
+              hintText: "Ej.: torre norte, unidad 502, bloque B",
+            ),
+          ),
+        ],
         if (_selectedTipo != null) ...[
           const SizedBox(height: 20),
           Container(
@@ -254,82 +340,12 @@ class _RegistroPaso4State extends State<RegistroPaso4> {
               borderRadius: BorderRadius.circular(12),
               border: Border.all(color: Colors.grey.shade200),
             ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text("Agregar pisos de la vivienda", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
-                const SizedBox(height: 16),
-                LayoutBuilder(
-                  builder: (context, constraints) {
-                    bool isNarrow = constraints.maxWidth < 350;
-                    return isNarrow
-                        ? Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              _buildNextFloorIndicator(),
-                              const SizedBox(height: 12),
-                              _buildMaterialDropdown(),
-                            ],
-                          )
-                        : Row(
-                            crossAxisAlignment: CrossAxisAlignment.end,
-                            children: [
-                              Expanded(flex: 2, child: _buildNextFloorIndicator()),
-                              const SizedBox(width: 12),
-                              Expanded(flex: 3, child: _buildMaterialDropdown()),
-                            ],
-                          );
-                  },
-                ),
-                const SizedBox(height: 16),
-                ElevatedButton(
-                  onPressed: (_materialesPiso.isNotEmpty && _selectedMaterial != null) ? _addFloor : null,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF8BA9FF),
-                    minimumSize: const Size(double.infinity, 45),
-                  ),
-                  child: Text("+ Agregar Piso ${_floors.length + 1}"),
-                ),
-                if (_floors.isNotEmpty) ...[
-                  const SizedBox(height: 20),
-                  Text("Pisos agregados (${_floors.length})", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                  const SizedBox(height: 8),
-                  ..._floors.asMap().entries.map((entry) {
-                    int idx = entry.key;
-                    Map<String, String> floor = entry.value;
-                    return Container(
-                      margin: const EdgeInsets.only(bottom: 8),
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: Colors.grey.shade200),
-                      ),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text("Piso ${floor['number']}", style: const TextStyle(fontWeight: FontWeight.bold)),
-                                Text("Material: ${floor['material']}", style: const TextStyle(color: Colors.grey, fontSize: 12)),
-                              ],
-                            ),
-                          ),
-                          IconButton(
-                            icon: const Icon(Icons.delete_outline, color: Colors.red, size: 20),
-                            onPressed: () => _removeFloor(idx),
-                          ),
-                        ],
-                      ),
-                    );
-                  }),
-                ],
-              ],
-            ),
+            child: _esDepartamento(_selectedTipo)
+                ? _buildBloqueDepartamento()
+                : _buildBloquePisosMultiple(),
           ),
         ],
+        const SizedBox(height: 20),
         const InputLabel(label: "Estado general de la vivienda", required: true),
         _estadosVivienda.isEmpty
             ? const Text(
@@ -393,7 +409,14 @@ class _RegistroPaso4State extends State<RegistroPaso4> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       _buildSummaryItem("Tipo:", _selectedTipo ?? "No especificado"),
-                      _buildSummaryItem("Pisos:", _floors.isEmpty ? "No especificado" : "${_floors.length}"),
+                      if (_esDeptoOCondominio(_selectedTipo))
+                        _buildSummaryItem(
+                          "Desc. depto/cond.:",
+                          _descDeptoCondController.text.trim().isEmpty
+                              ? "—"
+                              : _descDeptoCondController.text.trim(),
+                        ),
+                      _buildSummaryItem("Pisos:", _resumenPisosTexto()),
                       _buildSummaryItem("Estado:", _selectedEstado ?? "No especificado"),
                     ],
                   );
@@ -434,7 +457,7 @@ class _RegistroPaso4State extends State<RegistroPaso4> {
                         _tiposVivienda.isEmpty ||
                         _estadosVivienda.isEmpty ||
                         _materialesPiso.isEmpty ||
-                        _floors.isEmpty
+                        !_formularioPisosListo
                     ? null
                     : _completar,
                 child: widget.enviando
@@ -448,6 +471,136 @@ class _RegistroPaso4State extends State<RegistroPaso4> {
             ),
           ],
         ),
+      ],
+    );
+  }
+
+  Widget _buildBloqueDepartamento() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Departamento (un solo piso)',
+          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+        ),
+        const SizedBox(height: 8),
+        const Text(
+          'Selecciona el número de piso donde está tu unidad y el material del piso registrado en catálogo.',
+          style: TextStyle(color: Colors.grey, fontSize: 12),
+        ),
+        const SizedBox(height: 16),
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final narrow = constraints.maxWidth < 350;
+            final numeropDd = DropdownButtonFormField<int>(
+              value: _numeropDepartamento,
+              decoration: const InputDecoration(
+                labelText: 'Número de piso',
+                hintText: 'Selecciona',
+              ),
+              items: _numerosPisoDepartamento
+                  .map((n) => DropdownMenuItem<int>(value: n, child: Text('$n')))
+                  .toList(),
+              onChanged: (v) => setState(() => _numeropDepartamento = v),
+            );
+            final materialCol = _buildMaterialDropdown();
+            if (narrow) {
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  numeropDd,
+                  const SizedBox(height: 12),
+                  materialCol,
+                ],
+              );
+            }
+            return Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Expanded(child: numeropDd),
+                const SizedBox(width: 12),
+                Expanded(flex: 2, child: materialCol),
+              ],
+            );
+          },
+        ),
+      ],
+    );
+  }
+
+  Widget _buildBloquePisosMultiple() {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text("Agregar pisos de la vivienda", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+        const SizedBox(height: 16),
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final isNarrow = constraints.maxWidth < 350;
+            return isNarrow
+                ? Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildNextFloorIndicator(),
+                      const SizedBox(height: 12),
+                      _buildMaterialDropdown(),
+                    ],
+                  )
+                : Row(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Expanded(flex: 2, child: _buildNextFloorIndicator()),
+                      const SizedBox(width: 12),
+                      Expanded(flex: 3, child: _buildMaterialDropdown()),
+                    ],
+                  );
+          },
+        ),
+        const SizedBox(height: 16),
+        ElevatedButton(
+          onPressed: (_materialesPiso.isNotEmpty && _selectedMaterial != null) ? _addFloor : null,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: const Color(0xFF8BA9FF),
+            minimumSize: const Size(double.infinity, 45),
+          ),
+          child: Text("+ Agregar Piso ${_floors.length + 1}"),
+        ),
+        if (_floors.isNotEmpty) ...[
+          const SizedBox(height: 20),
+          Text("Pisos agregados (${_floors.length})", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+          const SizedBox(height: 8),
+          ..._floors.asMap().entries.map((entry) {
+            final idx = entry.key;
+            final floor = entry.value;
+            return Container(
+              margin: const EdgeInsets.only(bottom: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: Colors.grey.shade200),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text("Piso ${floor['number']}", style: const TextStyle(fontWeight: FontWeight.bold)),
+                        Text("Material: ${floor['material']}", style: const TextStyle(color: Colors.grey, fontSize: 12)),
+                      ],
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.delete_outline, color: Colors.red, size: 20),
+                    onPressed: () => _removeFloor(idx),
+                  ),
+                ],
+              ),
+            );
+          }),
+        ],
       ],
     );
   }
