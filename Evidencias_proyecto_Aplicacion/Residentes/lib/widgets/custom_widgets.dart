@@ -1,23 +1,51 @@
 import 'package:flutter/material.dart';
 
+/// Contenedor centrado con ancho máximo según el viewport (login, registro, etc.).
+/// En pantallas anchas (web/tablet) usa más ancho y más padding que en móvil.
 class ResponsiveContainer extends StatelessWidget {
   final Widget child;
-  const ResponsiveContainer({super.key, required this.child});
+
+  /// Si no es null, limita el ancho del contenido (p. ej. paso 3 con mapa amplio).
+  final double? maxWidth;
+
+  const ResponsiveContainer({super.key, required this.child, this.maxWidth});
+
+  static double _defaultMaxWidth(double screenWidth) {
+    if (screenWidth >= 1400) return 1080;
+    if (screenWidth >= 1100) return 920;
+    if (screenWidth >= 800) return 720;
+    if (screenWidth >= 600) return 580;
+    return 520;
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Center(
+    final screenW = MediaQuery.sizeOf(context).width;
+    final effectiveMax = maxWidth ?? _defaultMaxWidth(screenW);
+    final outer = screenW >= 900
+        ? 40.0
+        : screenW >= 600
+            ? 28.0
+            : 20.0;
+    final inner = screenW >= 900
+        ? 36.0
+        : screenW >= 600
+            ? 28.0
+            : 22.0;
+
+    return Align(
+      alignment: Alignment.topCenter,
       child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 500),
+        constraints: BoxConstraints(maxWidth: effectiveMax),
         child: Padding(
-          padding: const EdgeInsets.all(20.0),
+          padding: EdgeInsets.fromLTRB(outer, outer, outer, outer + 8),
           child: Card(
-            elevation: 2,
+            elevation: screenW >= 600 ? 3 : 2,
             shadowColor: Colors.black12,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
             color: Colors.white,
             child: Padding(
-              padding: const EdgeInsets.all(24.0),
+              padding: EdgeInsets.all(inner),
               child: child,
             ),
           ),
@@ -110,8 +138,12 @@ class StepIndicator extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final w = MediaQuery.sizeOf(context).width;
+    final horizontal = w >= 1100 ? 56.0 : w >= 800 ? 36.0 : w >= 600 ? 20.0 : 0.0;
+    final vertical = w >= 900 ? 24.0 : 20.0;
+
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 20),
+      padding: EdgeInsets.fromLTRB(horizontal, vertical, horizontal, vertical),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: List.generate(4, (index) {
