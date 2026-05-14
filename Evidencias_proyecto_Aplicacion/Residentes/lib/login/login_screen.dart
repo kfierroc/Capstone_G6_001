@@ -74,6 +74,10 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final screenW = MediaQuery.sizeOf(context).width;
+    final tituloLogin = screenW >= 900 ? 24.0 : screenW >= 600 ? 22.0 : 20.0;
+    final subtituloLogin = screenW >= 900 ? 15.0 : 14.0;
+
     return Scaffold(
       body: Column(
         children: [
@@ -84,20 +88,21 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
           Expanded(
             child: SingleChildScrollView(
+              padding: EdgeInsets.only(bottom: screenW >= 600 ? 28 : 16),
               child: ResponsiveContainer(
                 child: Column(
                   children: [
-                    const Text(
+                    Text(
                       "Iniciar Sesión",
-                      style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                      style: TextStyle(fontSize: tituloLogin, fontWeight: FontWeight.bold),
                     ),
-                    const SizedBox(height: 8),
-                    const Text(
+                    SizedBox(height: screenW >= 600 ? 10 : 8),
+                    Text(
                       "Accede a tu información familiar registrada",
                       textAlign: TextAlign.center,
-                      style: TextStyle(color: Colors.grey, fontSize: 14),
+                      style: TextStyle(color: Colors.grey.shade700, fontSize: subtituloLogin),
                     ),
-                    const SizedBox(height: 20),
+                    SizedBox(height: screenW >= 600 ? 28 : 20),
                     const InputLabel(label: "Correo electrónico"),
                     TextField(
                       controller: _emailController,

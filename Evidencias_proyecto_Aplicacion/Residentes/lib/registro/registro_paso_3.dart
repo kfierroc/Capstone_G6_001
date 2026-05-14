@@ -300,192 +300,252 @@ class _RegistroPaso3State extends State<RegistroPaso3> {
     widget.onNext();
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final azulMarco = Colors.blue.shade400;
-    final botonCoordStyle = OutlinedButton.styleFrom(
-      foregroundColor: azulMarco,
-      side: BorderSide(color: azulMarco),
+  double _alturaMapa(BuildContext context, double anchoLayout) {
+    final h = MediaQuery.sizeOf(context).height;
+    if (!_mapaGoogleDisponible()) return 240;
+    if (kIsWeb) {
+      if (anchoLayout >= 920) return (h * 0.52).clamp(380.0, 720.0);
+      if (anchoLayout >= 600) return (h * 0.40).clamp(280.0, 520.0);
+      return (h * 0.34).clamp(240.0, 460.0);
+    }
+    if (anchoLayout >= 600) return 300;
+    return 260;
+  }
+
+  Widget _buildBuscadorGoogle() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const InputLabel(label: 'Buscar dirección (Google Maps)', required: true),
+        TextField(
+          controller: _busquedaController,
+          textCapitalization: TextCapitalization.sentences,
+          decoration: InputDecoration(
+            hintText: 'Escribe calle y ciudad…',
+            suffixIcon: _cargandoPredicciones
+                ? const Padding(
+                    padding: EdgeInsets.all(12),
+                    child: SizedBox(
+                      width: 22,
+                      height: 22,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
+                  )
+                : const Icon(Icons.search),
+          ),
+          onChanged: _onBusquedaChanged,
+        ),
+        if (_predicciones.isNotEmpty)
+          Container(
+            margin: const EdgeInsets.only(top: 6),
+            constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(context).height >= 700 ? 260 : 200),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: Colors.grey.shade300),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.08),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: ListView.separated(
+              shrinkWrap: true,
+              padding: EdgeInsets.zero,
+              itemCount: _predicciones.length,
+              separatorBuilder: (context, index) =>
+                  Divider(height: 1, color: Colors.grey.shade200),
+              itemBuilder: (context, i) {
+                final p = _predicciones[i];
+                return ListTile(
+                  dense: true,
+                  title: Text(p.description, style: const TextStyle(fontSize: 14)),
+                  onTap: () => _seleccionarPrediccion(p),
+                );
+              },
+            ),
+          ),
+        const SizedBox(height: 14),
+      ],
     );
+  }
+
+  Widget _buildVistaPreviaSoloLectura() {
+    final calle = _calleController.text.trim();
+    final nro = _nroController.text.trim();
+    final tiene = calle.isNotEmpty && nro.isNotEmpty;
+    final subtle = TextStyle(color: Colors.grey.shade700, fontSize: 12);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Row(
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            Icon(Icons.home_outlined, size: 24),
-            SizedBox(width: 8),
-            Text(
-              'Ubicación de la Residencia',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            Icon(Icons.visibility_outlined, size: 18, color: Colors.grey.shade700),
+            const SizedBox(width: 8),
+            const Expanded(
+              child: Text(
+                'Vista previa de la dirección',
+                style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
+              ),
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade200,
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Text(
+                'Solo lectura',
+                style: TextStyle(fontSize: 11, color: Colors.grey.shade900),
+              ),
             ),
           ],
         ),
-        const SizedBox(height: 4),
-        const Text(
-          'Busca tu dirección en Google Maps o ingrésala manualmente. Ajusta el pin si el punto no coincide con tu casa.',
-          style: TextStyle(color: Colors.grey, fontSize: 14),
+        const SizedBox(height: 6),
+        Text(
+          'No editable: se rellena únicamente al elegir una sugerencia del buscador.',
+          style: subtle,
         ),
-        const SizedBox(height: 12),
-        CheckboxListTile(
-          contentPadding: EdgeInsets.zero,
-          title: const Text(
-            'Tu dirección no está en Google Maps, ¿ingresarla manualmente?',
-            style: TextStyle(fontSize: 14),
+        const SizedBox(height: 10),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: const Color(0xFFF9FAFB),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Colors.grey.shade300),
           ),
-          value: _direccionManual,
-          onChanged: (v) {
-            setState(() {
-              _direccionManual = v ?? false;
-              _predicciones = [];
-              if (_direccionManual) {
-                _googleFormatoValido = false;
-                _busquedaController.clear();
-              } else {
-                _calleController.clear();
-                _nroController.clear();
-                _googleFormatoValido = false;
-              }
-            });
-          },
-          controlAffinity: ListTileControlAffinity.leading,
-        ),
-        const SizedBox(height: 8),
-        if (!_direccionManual) ...[
-          const InputLabel(label: 'Buscar dirección (Google Maps)', required: true),
-          TextField(
-            controller: _busquedaController,
-            textCapitalization: TextCapitalization.sentences,
-            decoration: InputDecoration(
-              hintText: 'Escribe calle y ciudad…',
-              suffixIcon: _cargandoPredicciones
-                  ? const Padding(
-                      padding: EdgeInsets.all(12),
-                      child: SizedBox(
-                        width: 22,
-                        height: 22,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      ),
-                    )
-                  : const Icon(Icons.search),
-            ),
-            onChanged: _onBusquedaChanged,
-          ),
-          if (_predicciones.isNotEmpty)
-            Container(
-              margin: const EdgeInsets.only(top: 6),
-              constraints: const BoxConstraints(maxHeight: 200),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: Colors.grey.shade300),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.08),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: ListView.separated(
-                shrinkWrap: true,
-                padding: EdgeInsets.zero,
-                itemCount: _predicciones.length,
-                separatorBuilder: (context, index) =>
-                    Divider(height: 1, color: Colors.grey.shade200),
-                itemBuilder: (context, i) {
-                  final p = _predicciones[i];
-                  return ListTile(
-                    dense: true,
-                    title: Text(p.description, style: const TextStyle(fontSize: 14)),
-                    onTap: () => _seleccionarPrediccion(p),
-                  );
-                },
-              ),
-            ),
-          const SizedBox(height: 14),
-        ],
-        LayoutBuilder(
-          builder: (context, c) {
-            final camposEnFila = c.maxWidth >= 400;
-            final modoSoloLectura = !_direccionManual;
-
-            Widget campoCalle = Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                InputLabel(label: 'Calle', required: true),
-                TextField(
-                  controller: _calleController,
-                  readOnly: modoSoloLectura,
-                  textCapitalization: TextCapitalization.words,
-                  decoration: InputDecoration(
-                    hintText: modoSoloLectura ? 'Se completa al elegir una sugerencia' : 'Ej: Pasaje Los Alerces',
-                    filled: modoSoloLectura,
-                    fillColor: modoSoloLectura ? Colors.grey.shade100 : null,
+          child: tiene
+              ? LayoutBuilder(
+                  builder: (context, c) {
+                    final fila = c.maxWidth >= 420;
+                    final calleCol = Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Calle', style: subtle.copyWith(fontWeight: FontWeight.w600)),
+                        const SizedBox(height: 4),
+                        Text(calle, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                      ],
+                    );
+                    final nroCol = Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Número', style: subtle.copyWith(fontWeight: FontWeight.w600)),
+                        const SizedBox(height: 4),
+                        Text(nro, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                      ],
+                    );
+                    if (fila) {
+                      return Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(flex: 3, child: calleCol),
+                          const SizedBox(width: 16),
+                          Expanded(flex: 2, child: nroCol),
+                        ],
+                      );
+                    }
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        calleCol,
+                        const SizedBox(height: 14),
+                        nroCol,
+                      ],
+                    );
+                  },
+                )
+              : Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  child: Text(
+                    'Selecciona una dirección en las sugerencias del buscador para ver aquí calle y número.',
+                    style: subtle.copyWith(fontStyle: FontStyle.italic),
                   ),
                 ),
-              ],
-            );
-
-            Widget campoNumero = Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const InputLabel(label: 'Número', required: true),
-                TextField(
-                  controller: _nroController,
-                  readOnly: modoSoloLectura,
-                  keyboardType: TextInputType.number,
-                  inputFormatters: _direccionManual ? [FilteringTextInputFormatter.digitsOnly] : [],
-                  decoration: InputDecoration(
-                    hintText: modoSoloLectura ? '—' : '1234',
-                    filled: modoSoloLectura,
-                    fillColor: modoSoloLectura ? Colors.grey.shade100 : null,
-                  ),
-                ),
-              ],
-            );
-
-            if (camposEnFila) {
-              return Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(flex: 3, child: campoCalle),
-                  const SizedBox(width: 12),
-                  Expanded(flex: 2, child: campoNumero),
-                ],
-              );
-            }
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                campoCalle,
-                const SizedBox(height: 8),
-                campoNumero,
-              ],
-            );
-          },
         ),
-        const InputLabel(label: 'Casa interior (opcional)'),
-        TextField(
-          controller: _unidadController,
-          decoration: const InputDecoration(hintText: 'Depto, torre, etc. (opcional)'),
-        ),
-        const SizedBox(height: 16),
-        const Text(
+      ],
+    );
+  }
+
+  Widget _buildCamposManualDireccion() {
+    return LayoutBuilder(
+      builder: (context, c) {
+        final camposEnFila = c.maxWidth >= 400;
+        final campoCalle = Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const InputLabel(label: 'Calle', required: true),
+            TextField(
+              controller: _calleController,
+              textCapitalization: TextCapitalization.words,
+              decoration: const InputDecoration(
+                hintText: 'Ej: Pasaje Los Alerces',
+              ),
+            ),
+          ],
+        );
+        final campoNumero = Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const InputLabel(label: 'Número', required: true),
+            TextField(
+              controller: _nroController,
+              keyboardType: TextInputType.number,
+              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+              decoration: const InputDecoration(hintText: '1234'),
+            ),
+          ],
+        );
+        if (camposEnFila) {
+          return Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(flex: 3, child: campoCalle),
+              const SizedBox(width: 12),
+              Expanded(flex: 2, child: campoNumero),
+            ],
+          );
+        }
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            campoCalle,
+            const SizedBox(height: 8),
+            campoNumero,
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildColumnaMapaYExtras({
+    required double alturaMapa,
+    required ButtonStyle botonCoordStyle,
+  }) {
+    final tituloMapa = MediaQuery.sizeOf(context).width >= 900 ? 15.0 : 14.0;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
           'Ubicación en el mapa',
-          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+          style: TextStyle(fontWeight: FontWeight.bold, fontSize: tituloMapa),
         ),
         const SizedBox(height: 6),
         Text(
           'Las coordenadas guardadas son siempre las del pin. Puedes arrastrarlo o tocar el mapa para corregir la posición.',
           style: TextStyle(fontSize: 12, color: Colors.grey.shade700, height: 1.35),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 10),
         if (_mapaGoogleDisponible())
           SizedBox(
-            height: 240,
+            height: alturaMapa,
             child: ClipRRect(
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(12),
               child: GoogleMap(
                 initialCameraPosition: CameraPosition(target: _cameraTarget, zoom: 15),
                 markers: _markers,
@@ -512,7 +572,7 @@ class _RegistroPaso3State extends State<RegistroPaso3> {
               style: TextStyle(fontSize: 13),
             ),
           ),
-        const SizedBox(height: 10),
+        const SizedBox(height: 12),
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -636,8 +696,96 @@ class _RegistroPaso3State extends State<RegistroPaso3> {
             ),
           ),
         ],
-        const SizedBox(height: 20),
-        Row(
+      ],
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final azulMarco = Colors.blue.shade400;
+    final botonCoordStyle = OutlinedButton.styleFrom(
+      foregroundColor: azulMarco,
+      side: BorderSide(color: azulMarco),
+    );
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final ancho = constraints.maxWidth;
+        final mapaOk = _mapaGoogleDisponible();
+        final dosColumnas = mapaOk && ancho >= 920;
+        final alturaMapa = _alturaMapa(context, ancho);
+        final textoAyuda = _direccionManual
+            ? 'Completa calle y número y ajusta el pin en el mapa hasta tu ubicación real.'
+            : 'Usa solo el buscador para la dirección; abajo verás una vista previa (no editable). Para escribir calle y número a mano, marca la opción de ingreso manual.';
+
+        final columnaIzquierda = Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.home_outlined, size: ancho >= 900 ? 26 : 24),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Ubicación de la Residencia',
+                    style: TextStyle(
+                      fontSize: ancho >= 900 ? 22 : 20,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Text(
+              textoAyuda,
+              style: TextStyle(
+                color: Colors.grey.shade700,
+                fontSize: ancho >= 900 ? 15 : 14,
+                height: 1.4,
+              ),
+            ),
+            const SizedBox(height: 12),
+            CheckboxListTile(
+              contentPadding: EdgeInsets.zero,
+              title: const Text(
+                'Tu dirección no está en Google Maps, ¿ingresarla manualmente?',
+                style: TextStyle(fontSize: 14),
+              ),
+              value: _direccionManual,
+              onChanged: (v) {
+                setState(() {
+                  _direccionManual = v ?? false;
+                  _predicciones = [];
+                  if (_direccionManual) {
+                    _googleFormatoValido = false;
+                    _busquedaController.clear();
+                  } else {
+                    _calleController.clear();
+                    _nroController.clear();
+                    _googleFormatoValido = false;
+                  }
+                });
+              },
+              controlAffinity: ListTileControlAffinity.leading,
+            ),
+            const SizedBox(height: 8),
+            if (!_direccionManual) _buildBuscadorGoogle(),
+            if (!_direccionManual) _buildVistaPreviaSoloLectura() else _buildCamposManualDireccion(),
+            const InputLabel(label: 'Casa interior (opcional)'),
+            TextField(
+              controller: _unidadController,
+              decoration: const InputDecoration(hintText: 'Depto, torre, etc. (opcional)'),
+            ),
+          ],
+        );
+
+        final columnaMapa = _buildColumnaMapaYExtras(
+          alturaMapa: alturaMapa,
+          botonCoordStyle: botonCoordStyle,
+        );
+
+        final botones = Row(
           children: [
             Expanded(
               child: OutlinedButton(
@@ -653,8 +801,37 @@ class _RegistroPaso3State extends State<RegistroPaso3> {
               ),
             ),
           ],
-        ),
-      ],
+        );
+
+        if (dosColumnas) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(flex: 5, child: columnaIzquierda),
+                  const SizedBox(width: 28),
+                  Expanded(flex: 6, child: columnaMapa),
+                ],
+              ),
+              const SizedBox(height: 28),
+              botones,
+            ],
+          );
+        }
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            columnaIzquierda,
+            const SizedBox(height: 18),
+            columnaMapa,
+            const SizedBox(height: 22),
+            botones,
+          ],
+        );
+      },
     );
   }
 }
