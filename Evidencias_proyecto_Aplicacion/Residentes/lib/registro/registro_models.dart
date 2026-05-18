@@ -53,3 +53,16 @@ String? normalizarTelefonoSufijoChile(String raw) {
   if (!RegExp(r'^9\d{8}$').hasMatch(d)) return null;
   return '+56$d';
 }
+
+/// Formato visual con puntos cada 3 dígitos desde la derecha (ej. 12.345.678-9).
+String formatearRutMostrar(int rutNum, String rutDv) {
+  var s = rutNum.toString();
+  final partes = <String>[];
+  while (s.length > 3) {
+    partes.add(s.substring(s.length - 3));
+    s = s.substring(0, s.length - 3);
+  }
+  if (s.isNotEmpty) partes.add(s);
+  final cuerpo = partes.reversed.join('.');
+  return '$cuerpo-${rutDv.toUpperCase()}';
+}
