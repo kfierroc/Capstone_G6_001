@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+
+import '../services/catalogos_residente_service.dart';
+import '../services/gestion_residente_service.dart';
+import '../services/registro_residente_service.dart';
 import '../widgets/custom_widgets.dart';
 
-/// Maqueta: gestión de mascotas. Misma envoltura que [GestionFamiliaScreen]
-/// (app bar verde, tarjeta blanca, nav inferior). Sin BD ni APIs.
+/// Gestión de mascotas con catálogos y tabla `mascota` en Supabase.
 class GestionMascotasScreen extends StatefulWidget {
   const GestionMascotasScreen({super.key});
 
@@ -18,29 +22,68 @@ class _GestionMascotasScreenState extends State<GestionMascotasScreen> {
   static const _textoPrincipal = Color(0xFF1A1A2E);
   static const _textoGris = Color(0xFF6B7280);
   static const _inputFill = Color(0xFFF9FAFB);
-  /// Acento pestaña activa en esta sección (referencia de diseño).
   static const _navMascotas = Color(0xFF7C3AED);
   static const _navMascotasBg = Color(0xFFF3E8FF);
 
   final _nombreController = TextEditingController();
 
-  String? _especie;
-  String? _tamano;
+  List<({int id, String etiqueta})> _especies = [];
+  List<({int id, String etiqueta})> _tamanios = [];
+  int? _idEspecie;
+  int? _idTamanio;
 
-  final List<_MascotaLocal> _mascotas = [
-    _MascotaLocal(
-      nombre: 'Max',
-      especie: 'Perro',
-      tamano: 'Grande',
-      raza: 'Golden Retriever',
-      pesoKg: '35',
-    ),
-  ];
+  ContextoResidente? _contexto;
+  List<MascotaVista> _mascotas = [];
+  bool _loading = true;
+  String? _sinGrupoMensaje;
+  String? _catalogError;
+
+  @override
+  void initState() {
+    super.initState();
+    _bootstrap();
+  }
 
   @override
   void dispose() {
     _nombreController.dispose();
     super.dispose();
+  }
+
+  Future<void> _bootstrap() async {
+    setState(() {
+      _loading = true;
+      _sinGrupoMensaje = null;
+      _catalogError = null;
+    });
+    final client = Supabase.instance.client;
+    try {
+      final cat = CatalogosResidenteService(client);
+      final ges = GestionResidenteService(client);
+      final especies = await cat.tipoEspecies();
+      final tamanios = await cat.tipoTamaniosMascota();
+      final ctx = await ges.contextoResidente();
+      List<MascotaVista> mas = [];
+      if (ctx != null) {
+        mas = await ges.listarMascotas(ctx.idGrupof);
+      }
+      if (!mounted) return;
+      setState(() {
+        _especies = especies;
+        _tamanios = tamanios;
+        _contexto = ctx;
+        _mascotas = mas;
+        _sinGrupoMensaje =
+            ctx == null ? 'No hay grupo familiar asociado a tu cuenta. Completa el registro inicial.' : null;
+        _loading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _catalogError = e.toString();
+        _loading = false;
+      });
+    }
   }
 
   void _snack(String mensaje) {
@@ -76,49 +119,60 @@ class _GestionMascotasScreenState extends State<GestionMascotasScreen> {
     );
   }
 
-  void _agregarMascotaMaqueta() {
+  Future<void> _agregarMascota() async {
+    final ctx = _contexto;
+    if (ctx == null) {
+      _snack(_sinGrupoMensaje ?? 'No hay grupo familiar.');
+      return;
+    }
     final nombre = _nombreController.text.trim();
     if (nombre.isEmpty) {
       _snack('Ingresa el nombre de la mascota.');
       return;
     }
-    if (_especie == null || _tamano == null) {
+    if (_idEspecie == null || _idTamanio == null) {
       _snack('Selecciona especie y tamaño.');
       return;
     }
-    setState(() {
-      _mascotas.add(
-        _MascotaLocal(
-          nombre: nombre,
-          especie: _especie!,
-          tamano: _tamano!,
-          raza: '',
-          pesoKg: '',
-        ),
+    try {
+      await GestionResidenteService(Supabase.instance.client).agregarMascota(
+        idGrupof: ctx.idGrupof,
+        nombre: nombre,
+        idEspecie: _idEspecie!,
+        idTamanio: _idTamanio!,
       );
       _nombreController.clear();
-      _especie = null;
-      _tamano = null;
-    });
-    _snack('Mascota agregada (solo en pantalla).');
+      setState(() {
+        _idEspecie = null;
+        _idTamanio = null;
+      });
+      final list = await GestionResidenteService(Supabase.instance.client).listarMascotas(ctx.idGrupof);
+      if (!mounted) return;
+      setState(() => _mascotas = list);
+      _snack('Mascota registrada correctamente.');
+    } on RegistroResidenteException catch (e) {
+      _snack(e.message);
+    } catch (e) {
+      _snack('No se pudo registrar la mascota: $e');
+    }
   }
 
-  void _eliminarMascota(int index) {
+  void _eliminarMascota(MascotaVista m) {
     showDialog<void>(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: const Text(
           'Eliminar mascota',
           style: TextStyle(fontWeight: FontWeight.w700, color: _textoPrincipal),
         ),
         content: Text(
-          '¿Quitar a ${_mascotas[index].nombre} de la lista?',
+          '¿Quitar a ${m.nombre} de la lista?',
           style: const TextStyle(color: _textoGris),
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(dialogContext),
             child: const Text('Cancelar', style: TextStyle(color: _textoGris)),
           ),
           ElevatedButton(
@@ -126,10 +180,21 @@ class _GestionMascotasScreenState extends State<GestionMascotasScreen> {
               backgroundColor: const Color(0xFFEF4444),
               foregroundColor: Colors.white,
             ),
-            onPressed: () {
-              setState(() => _mascotas.removeAt(index));
-              Navigator.pop(context);
-              _snack('Mascota quitada de la lista.');
+            onPressed: () async {
+              try {
+                await GestionResidenteService(Supabase.instance.client).eliminarMascota(m.idMascota);
+                if (!dialogContext.mounted) return;
+                Navigator.pop(dialogContext);
+                final ctx = _contexto;
+                if (ctx != null) {
+                  final list = await GestionResidenteService(Supabase.instance.client).listarMascotas(ctx.idGrupof);
+                  if (!mounted) return;
+                  setState(() => _mascotas = list);
+                }
+                _snack('Mascota eliminada.');
+              } catch (e) {
+                _snack('No se pudo eliminar: $e');
+              }
             },
             child: const Text('Eliminar'),
           ),
@@ -188,6 +253,29 @@ class _GestionMascotasScreenState extends State<GestionMascotasScreen> {
   }
 
   Widget _buildMascotasBody() {
+    if (_loading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    if (_catalogError != null) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(_catalogError!, textAlign: TextAlign.center, style: const TextStyle(color: Colors.red, fontSize: 13)),
+              const SizedBox(height: 12),
+              OutlinedButton.icon(
+                onPressed: _bootstrap,
+                icon: const Icon(Icons.refresh, size: 18),
+                label: const Text('Reintentar'),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     return ColoredBox(
       color: _fondoPagina,
       child: SingleChildScrollView(
@@ -225,6 +313,23 @@ class _GestionMascotasScreenState extends State<GestionMascotasScreen> {
                 style: TextStyle(fontSize: 13, color: _textoGris),
               ),
               const SizedBox(height: 20),
+              if (_sinGrupoMensaje != null)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 16),
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFFF7ED),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: const Color(0xFFFDBA74)),
+                    ),
+                    child: Text(
+                      _sinGrupoMensaje!,
+                      style: const TextStyle(fontSize: 13, color: _textoPrincipal, height: 1.35),
+                    ),
+                  ),
+                ),
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(16),
@@ -257,16 +362,17 @@ class _GestionMascotasScreenState extends State<GestionMascotasScreen> {
                       style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: _textoPrincipal),
                     ),
                     const SizedBox(height: 6),
-                    DropdownButtonFormField<String>(
-                      initialValue: _especie,
+                    DropdownButtonFormField<int>(
+                      // ignore: deprecated_member_use
+                      value: _idEspecie,
                       decoration: _fieldDecoration(hint: 'Selecciona la especie').copyWith(
                         hintStyle: const TextStyle(color: _textoGris, fontSize: 14),
                       ),
                       hint: const Text('Selecciona la especie', style: TextStyle(color: _textoGris, fontSize: 14)),
-                      items: ['Perro', 'Gato', 'Ave', 'Otro']
-                          .map((e) => DropdownMenuItem(value: e, child: Text(e)))
+                      items: _especies
+                          .map((e) => DropdownMenuItem<int>(value: e.id, child: Text(e.etiqueta)))
                           .toList(),
-                      onChanged: (v) => setState(() => _especie = v),
+                      onChanged: (v) => setState(() => _idEspecie = v),
                     ),
                     const SizedBox(height: 14),
                     const Text(
@@ -274,23 +380,26 @@ class _GestionMascotasScreenState extends State<GestionMascotasScreen> {
                       style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: _textoPrincipal),
                     ),
                     const SizedBox(height: 6),
-                    DropdownButtonFormField<String>(
-                      initialValue: _tamano,
+                    DropdownButtonFormField<int>(
+                      // ignore: deprecated_member_use
+                      value: _idTamanio,
                       decoration: _fieldDecoration(hint: 'Selecciona el tamaño').copyWith(
                         hintStyle: const TextStyle(color: _textoGris, fontSize: 14),
                       ),
                       hint: const Text('Selecciona el tamaño', style: TextStyle(color: _textoGris, fontSize: 14)),
-                      items: ['Pequeño', 'Mediano', 'Grande']
-                          .map((e) => DropdownMenuItem(value: e, child: Text(e)))
+                      items: _tamanios
+                          .map((e) => DropdownMenuItem<int>(value: e.id, child: Text(e.etiqueta)))
                           .toList(),
-                      onChanged: (v) => setState(() => _tamano = v),
+                      onChanged: (v) => setState(() => _idTamanio = v),
                     ),
                     const SizedBox(height: 16),
                     SizedBox(
                       width: double.infinity,
                       height: 48,
                       child: ElevatedButton.icon(
-                        onPressed: _agregarMascotaMaqueta,
+                        onPressed: (_contexto == null || _especies.isEmpty || _tamanios.isEmpty)
+                            ? null
+                            : () => _agregarMascota(),
                         icon: const Icon(Icons.add, size: 20),
                         label: const Text(
                           'Agregar Mascota',
@@ -322,7 +431,7 @@ class _GestionMascotasScreenState extends State<GestionMascotasScreen> {
                 physics: const NeverScrollableScrollPhysics(),
                 itemCount: _mascotas.length,
                 separatorBuilder: (context, index) => const SizedBox(height: 10),
-                itemBuilder: (context, index) => _buildMascotaCard(_mascotas[index], index),
+                itemBuilder: (context, index) => _buildMascotaCard(_mascotas[index]),
               ),
             ],
           ),
@@ -331,7 +440,7 @@ class _GestionMascotasScreenState extends State<GestionMascotasScreen> {
     );
   }
 
-  Widget _buildMascotaCard(_MascotaLocal m, int index) {
+  Widget _buildMascotaCard(MascotaVista m) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -356,7 +465,7 @@ class _GestionMascotasScreenState extends State<GestionMascotasScreen> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  m.subtituloLinea,
+                  '${m.especie} • ${m.tamano}',
                   style: const TextStyle(fontSize: 13, color: _textoGris, height: 1.3),
                 ),
               ],
@@ -371,7 +480,7 @@ class _GestionMascotasScreenState extends State<GestionMascotasScreen> {
                 border: Border.all(color: _bordeGris),
               ),
               child: InkWell(
-                onTap: () => _eliminarMascota(index),
+                onTap: () => _eliminarMascota(m),
                 borderRadius: BorderRadius.circular(10),
                 child: const SizedBox(
                   width: 40,
@@ -451,28 +560,5 @@ class _GestionMascotasScreenState extends State<GestionMascotasScreen> {
         ),
       ),
     );
-  }
-}
-
-class _MascotaLocal {
-  _MascotaLocal({
-    required this.nombre,
-    required this.especie,
-    required this.tamano,
-    required this.raza,
-    required this.pesoKg,
-  });
-
-  final String nombre;
-  final String especie;
-  final String tamano;
-  final String raza;
-  final String pesoKg;
-
-  String get subtituloLinea {
-    final parts = <String>[especie, tamano];
-    if (raza.trim().isNotEmpty) parts.add(raza.trim());
-    if (pesoKg.trim().isNotEmpty) parts.add('${pesoKg.trim()}kg');
-    return parts.join(' • ');
   }
 }
