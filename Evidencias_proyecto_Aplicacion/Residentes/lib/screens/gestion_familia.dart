@@ -3,6 +3,8 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../models/condiciones_catalogo.dart';
 import '../services/catalogos_residente_service.dart';
+import '../services/gestion_residente_service.dart';
+import '../services/registro_residente_service.dart';
 import '../widgets/custom_widgets.dart';
 
 /// Home del residente: barra superior verde + contenido en tarjeta blanca + navegación inferior.
@@ -37,50 +39,74 @@ class _GestionFamiliaScreenState extends State<GestionFamiliaScreen> {
   final Map<int, bool> _expandido = {};
 
   /// `condiciones.id_condicion` seleccionadas en el formulario nuevo integrante
-  final Set<int> _seleccionadasIds = {9};
+  final Set<int> _seleccionadasIds = {};
 
-  final List<_MiembroLocal> _miembros = [
-    _MiembroLocal(
-      rol: 'Titular',
-      anioNacimiento: 1979,
-      idsCondiciones: [10, 14],
-    ),
-    _MiembroLocal(
-      rol: 'Residente 2',
-      anioNacimiento: 1977,
-      idsCondiciones: [3],
-    ),
-  ];
-
-  int _contadorResidentes = 3;
+  ContextoResidente? _contexto;
+  List<IntegranteVista> _integrantes = [];
+  bool _loadingContext = true;
+  String? _sinGrupoMensaje;
 
   @override
   void initState() {
     super.initState();
-    _cargarCatalogoCondiciones();
+    _bootstrap();
   }
 
-  Future<void> _cargarCatalogoCondiciones() async {
+  Future<void> _bootstrap() async {
     setState(() {
       _catalogLoading = true;
       _catalogError = null;
+      _loadingContext = true;
+      _sinGrupoMensaje = null;
     });
+    final client = Supabase.instance.client;
     try {
-      final list = await CatalogosResidenteService(Supabase.instance.client).condicionesPorCategoria();
+      final catSvc = CatalogosResidenteService(client);
+      final gesSvc = GestionResidenteService(client);
+      final cats = await catSvc.condicionesPorCategoria();
+      final ctx = await gesSvc.contextoResidente();
+      List<IntegranteVista> ints = [];
+      if (ctx != null) {
+        ints = await gesSvc.listarIntegrantes(ctx.idGrupof);
+      }
       if (!mounted) return;
       setState(() {
-        _categorias = list;
-        for (final c in list) {
+        _categorias = cats;
+        for (final c in cats) {
           _expandido.putIfAbsent(c.idCategC, () => false);
         }
+        _contexto = ctx;
+        _integrantes = ints;
+        _sinGrupoMensaje =
+            ctx == null ? 'No hay grupo familiar asociado a tu cuenta. Completa el registro inicial.' : null;
         _catalogLoading = false;
+        _loadingContext = false;
       });
     } catch (e) {
       if (!mounted) return;
       setState(() {
         _catalogError = e.toString();
         _catalogLoading = false;
+        _loadingContext = false;
       });
+    }
+  }
+
+  Future<void> _recargarIntegrantes() async {
+    final ctx = _contexto;
+    if (ctx == null) return;
+    setState(() => _loadingContext = true);
+    try {
+      final list = await GestionResidenteService(Supabase.instance.client).listarIntegrantes(ctx.idGrupof);
+      if (!mounted) return;
+      setState(() {
+        _integrantes = list;
+        _loadingContext = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _loadingContext = false);
+      _snack('No se pudieron actualizar los integrantes: $e');
     }
   }
 
@@ -119,7 +145,12 @@ class _GestionFamiliaScreenState extends State<GestionFamiliaScreen> {
     }
   }
 
-  void _agregarResidenteMaqueta() {
+  Future<void> _agregarIntegrante() async {
+    final ctx = _contexto;
+    if (ctx == null) {
+      _snack(_sinGrupoMensaje ?? 'No hay grupo familiar.');
+      return;
+    }
     final anio = int.tryParse(_anioController.text.trim());
     if (anio == null || anio < 1900 || anio > DateTime.now().year) {
       _snack('Ingresa un año de nacimiento válido.');
@@ -129,34 +160,36 @@ class _GestionFamiliaScreenState extends State<GestionFamiliaScreen> {
       _snack('Selecciona al menos una condición.');
       return;
     }
-    setState(() {
-      _miembros.add(
-        _MiembroLocal(
-          rol: 'Residente $_contadorResidentes',
-          anioNacimiento: anio,
-          idsCondiciones: List<int>.from(_seleccionadasIds),
-        ),
+    try {
+      await GestionResidenteService(Supabase.instance.client).agregarIntegrante(
+        idGrupof: ctx.idGrupof,
+        anioNac: anio,
+        idsCondiciones: Set<int>.from(_seleccionadasIds),
       );
-      _contadorResidentes++;
       _limpiarFormulario();
-    });
-    _snack('Integrante agregado (solo en pantalla).');
+      await _recargarIntegrantes();
+      if (!mounted) return;
+      _snack('Integrante registrado correctamente.');
+    } on RegistroResidenteException catch (e) {
+      _snack(e.message);
+    } catch (e) {
+      _snack('No se pudo registrar el integrante: $e');
+    }
   }
 
-  void _editarMiembro(int index) {
-    final m = _miembros[index];
+  void _editarMiembro(IntegranteVista m) {
     final anioEdit = TextEditingController(text: '${m.anioNacimiento}');
     final condEdit = Set<int>.from(m.idsCondiciones);
     final expEdit = Map<int, bool>.from(_expandido);
 
     showDialog<void>(
       context: context,
-      builder: (context) => StatefulBuilder(
+      builder: (dialogContext) => StatefulBuilder(
         builder: (context, setDialog) {
           return AlertDialog(
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
             title: Text(
-              'Editar ${m.rol}',
+              'Editar ${m.etiqueta}',
               style: const TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w700,
@@ -213,22 +246,37 @@ class _GestionFamiliaScreenState extends State<GestionFamiliaScreen> {
             ),
             actions: [
               TextButton(
-                onPressed: () => Navigator.pop(context),
+                onPressed: () => Navigator.pop(dialogContext),
                 child: const Text('Cancelar', style: TextStyle(color: _textoGris)),
               ),
               ElevatedButton(
-                onPressed: () {
+                onPressed: () async {
                   final anio = int.tryParse(anioEdit.text.trim());
                   if (anio == null) {
                     _snack('Año inválido.');
                     return;
                   }
-                  setState(() {
-                    m.anioNacimiento = anio;
-                    m.idsCondiciones = condEdit.toList();
-                  });
-                  Navigator.pop(context);
-                  _snack('Cambios aplicados en la maqueta.');
+                  if (condEdit.isEmpty) {
+                    _snack('Selecciona al menos una condición.');
+                    return;
+                  }
+                  try {
+                    await GestionResidenteService(Supabase.instance.client).actualizarIntegrante(
+                      idIntegrante: m.idIntegrante,
+                      esTitular: m.isTitular,
+                      anioNac: anio,
+                      idsCondiciones: condEdit,
+                    );
+                    if (!dialogContext.mounted) return;
+                    Navigator.pop(dialogContext);
+                    await _recargarIntegrantes();
+                    if (!mounted) return;
+                    _snack('Cambios guardados.');
+                  } on RegistroResidenteException catch (e) {
+                    _snack(e.message);
+                  } catch (e) {
+                    _snack('No se pudo guardar: $e');
+                  }
                 },
                 child: const Text('Guardar'),
               ),
@@ -239,23 +287,23 @@ class _GestionFamiliaScreenState extends State<GestionFamiliaScreen> {
     ).then((_) => anioEdit.dispose());
   }
 
-  void _eliminarMiembro(int index) {
-    final rol = _miembros[index].rol;
+  void _eliminarMiembro(IntegranteVista m) {
+    final nombre = m.etiqueta;
     showDialog<void>(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: const Text(
           'Eliminar miembro',
           style: TextStyle(fontWeight: FontWeight.w700, color: _textoPrincipal),
         ),
         content: Text(
-          '¿Quitar a $rol de la lista?',
+          '¿Quitar a $nombre del grupo familiar?',
           style: const TextStyle(color: _textoGris),
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(dialogContext),
             child: const Text('Cancelar', style: TextStyle(color: _textoGris)),
           ),
           ElevatedButton(
@@ -263,10 +311,19 @@ class _GestionFamiliaScreenState extends State<GestionFamiliaScreen> {
               backgroundColor: const Color(0xFFEF4444),
               foregroundColor: Colors.white,
             ),
-            onPressed: () {
-              setState(() => _miembros.removeAt(index));
-              Navigator.pop(context);
-              _snack('Miembro quitado de la lista.');
+            onPressed: () async {
+              try {
+                await GestionResidenteService(Supabase.instance.client).eliminarIntegrante(m.idIntegrante);
+                if (!dialogContext.mounted) return;
+                Navigator.pop(dialogContext);
+                await _recargarIntegrantes();
+                if (!mounted) return;
+                _snack('Integrante eliminado.');
+              } on RegistroResidenteException catch (e) {
+                _snack(e.message);
+              } catch (e) {
+                _snack('No se pudo eliminar: $e');
+              }
             },
             child: const Text('Eliminar'),
           ),
@@ -347,6 +404,23 @@ class _GestionFamiliaScreenState extends State<GestionFamiliaScreen> {
                 style: TextStyle(fontSize: 13, color: _textoGris),
               ),
               const SizedBox(height: 20),
+              if (_sinGrupoMensaje != null)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 16),
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFFF7ED),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: const Color(0xFFFDBA74)),
+                    ),
+                    child: Text(
+                      _sinGrupoMensaje!,
+                      style: const TextStyle(fontSize: 13, color: _textoPrincipal, height: 1.35),
+                    ),
+                  ),
+                ),
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(16),
@@ -408,7 +482,7 @@ class _GestionFamiliaScreenState extends State<GestionFamiliaScreen> {
                           ),
                           const SizedBox(height: 8),
                           OutlinedButton.icon(
-                            onPressed: _cargarCatalogoCondiciones,
+                            onPressed: _bootstrap,
                             icon: const Icon(Icons.refresh, size: 18),
                             label: const Text('Reintentar'),
                           ),
@@ -444,9 +518,10 @@ class _GestionFamiliaScreenState extends State<GestionFamiliaScreen> {
                       child: ElevatedButton.icon(
                         onPressed: (_catalogLoading ||
                                 _catalogError != null ||
-                                _categorias.isEmpty)
+                                _categorias.isEmpty ||
+                                _contexto == null)
                             ? null
-                            : _agregarResidenteMaqueta,
+                            : () => _agregarIntegrante(),
                         icon: const Icon(Icons.add, size: 20),
                         label: const Text(
                           'Agregar Residente',
@@ -465,7 +540,7 @@ class _GestionFamiliaScreenState extends State<GestionFamiliaScreen> {
               ),
               const SizedBox(height: 24),
               Text(
-                'Miembros de la familia (${_miembros.length})',
+                'Miembros de la familia (${_integrantes.length})',
                 style: const TextStyle(
                   fontSize: 15,
                   fontWeight: FontWeight.w600,
@@ -473,13 +548,19 @@ class _GestionFamiliaScreenState extends State<GestionFamiliaScreen> {
                 ),
               ),
               const SizedBox(height: 14),
-              ListView.separated(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: _miembros.length,
-                separatorBuilder: (context, index) => const SizedBox(height: 10),
-                itemBuilder: (context, index) => _buildItemMiembro(_miembros[index], index),
-              ),
+              if (_loadingContext && _integrantes.isEmpty)
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 24),
+                  child: Center(child: CircularProgressIndicator()),
+                )
+              else
+                ListView.separated(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: _integrantes.length,
+                  separatorBuilder: (context, index) => const SizedBox(height: 10),
+                  itemBuilder: (context, index) => _buildItemMiembro(_integrantes[index]),
+                ),
             ],
           ),
         ),
@@ -671,8 +752,8 @@ class _GestionFamiliaScreenState extends State<GestionFamiliaScreen> {
     );
   }
 
-  Widget _buildItemMiembro(_MiembroLocal m, int index) {
-    final esTitular = m.rol == 'Titular';
+  Widget _buildItemMiembro(IntegranteVista m) {
+    final esTitular = m.isTitular;
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -690,7 +771,7 @@ class _GestionFamiliaScreenState extends State<GestionFamiliaScreen> {
                 Row(
                   children: [
                     Text(
-                      m.rol,
+                      m.etiqueta,
                       style: const TextStyle(
                         fontWeight: FontWeight.w700,
                         fontSize: 15,
@@ -745,7 +826,7 @@ class _GestionFamiliaScreenState extends State<GestionFamiliaScreen> {
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(10),
                 child: InkWell(
-                  onTap: () => _editarMiembro(index),
+                  onTap: () => _editarMiembro(m),
                   borderRadius: BorderRadius.circular(10),
                   child: const SizedBox(
                     width: 40,
@@ -757,7 +838,7 @@ class _GestionFamiliaScreenState extends State<GestionFamiliaScreen> {
               if (!esTitular) ...[
                 const SizedBox(height: 6),
                 IconButton(
-                  onPressed: () => _eliminarMiembro(index),
+                  onPressed: () => _eliminarMiembro(m),
                   icon: const Icon(Icons.delete_outline, color: Color(0xFFEF4444), size: 20),
                   tooltip: 'Eliminar',
                   splashRadius: 20,
@@ -771,17 +852,7 @@ class _GestionFamiliaScreenState extends State<GestionFamiliaScreen> {
   }
 }
 
-class _MiembroLocal {
-  _MiembroLocal({
-    required this.rol,
-    required this.anioNacimiento,
-    required this.idsCondiciones,
-  });
-
-  final String rol;
-  int anioNacimiento;
-  List<int> idsCondiciones;
-
+extension on IntegranteVista {
   int get edadAproximada {
     final year = DateTime.now().year;
     return (year - anioNacimiento).clamp(0, 130);

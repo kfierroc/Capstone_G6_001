@@ -24,6 +24,39 @@ class CatalogosResidenteService {
   }
 
   /// Categorías (`categ_condiciones`) con sus condiciones (`condiciones`).
+  /// Filas de `tipo_especie` para desplegables (id + texto).
+  Future<List<({int id, String etiqueta})>> tipoEspecies() async {
+    final raw = await _client.from('tipo_especie').select('id_especie, especie').order('id_especie');
+    final rows = _asRows(raw);
+    final out = <({int id, String etiqueta})>[];
+    for (final row in rows) {
+      out.add((id: (row['id_especie'] as num).toInt(), etiqueta: (row['especie'] as String).trim()));
+    }
+    return out;
+  }
+
+  /// Filas de `tipo_tamanio` para mascotas.
+  Future<List<({int id, String etiqueta})>> tipoTamaniosMascota() async {
+    final raw = await _client.from('tipo_tamanio').select('id_tamanio, tamanio').order('id_tamanio');
+    final rows = _asRows(raw);
+    final out = <({int id, String etiqueta})>[];
+    for (final row in rows) {
+      out.add((id: (row['id_tamanio'] as num).toInt(), etiqueta: (row['tamanio'] as String).trim()));
+    }
+    return out;
+  }
+
+  /// Filas de `tipo_mat_peligroso` para materiales peligrosos en el domicilio.
+  Future<List<({int id, String etiqueta})>> tiposMaterialPeligroso() async {
+    final raw = await _client.from('tipo_mat_peligroso').select('id_mat_pelig, tipo_mat').order('id_mat_pelig');
+    final rows = _asRows(raw);
+    final out = <({int id, String etiqueta})>[];
+    for (final row in rows) {
+      out.add((id: (row['id_mat_pelig'] as num).toInt(), etiqueta: (row['tipo_mat'] as String).trim()));
+    }
+    return out;
+  }
+
   Future<List<CategoriaCondicion>> condicionesPorCategoria() async {
     final rawCats = await _client.from('categ_condiciones').select('id_categ_c, categoria_c').order('id_categ_c');
     final rawConds =

@@ -1,7 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+
+import '../services/catalogos_residente_service.dart';
+import '../services/gestion_residente_service.dart';
+import '../services/registro_residente_service.dart';
 import '../widgets/custom_widgets.dart';
 
-/// Maqueta: materiales peligrosos en el domicilio.
+/// Materiales peligrosos por `registro_v` vigente (`mat_peligroso`).
 class GestionPeligrososScreen extends StatefulWidget {
   const GestionPeligrososScreen({super.key});
 
@@ -23,28 +28,66 @@ class _GestionPeligrososScreenState extends State<GestionPeligrososScreen> {
   static const _navPeligrososBg = Color(0xFFFFEDD5);
   static const _navPeligrosos = Color(0xFFEA580C);
 
-  static const List<String> _tiposMaterial = [
-    'Balón/Cilindro de gas',
-    'Productos químicos',
-    'Combustibles',
-    'Pinturas o solventes',
-    'Baterías o pilas',
-    'Otro',
-  ];
-
-  String? _tipoSeleccionado;
+  int? _tipoSeleccionadoId;
   final _cantidadController = TextEditingController(text: '1');
-  final _notasController = TextEditingController();
 
-  final List<_MaterialPeligroso> _registrados = [
-    _MaterialPeligroso(tipo: 'Balón/Cilindro de gas', cantidad: 1, notas: ''),
-  ];
+  List<({int id, String etiqueta})> _tiposCatalogo = [];
+  ContextoResidente? _contexto;
+  List<MatPeligrosoVista> _registrados = [];
+  bool _loading = true;
+  String? _avisoMensaje;
+  String? _loadError;
 
   @override
   void dispose() {
     _cantidadController.dispose();
-    _notasController.dispose();
     super.dispose();
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _bootstrap();
+  }
+
+  Future<void> _bootstrap() async {
+    setState(() {
+      _loading = true;
+      _avisoMensaje = null;
+      _loadError = null;
+    });
+    final client = Supabase.instance.client;
+    try {
+      final cat = CatalogosResidenteService(client);
+      final ges = GestionResidenteService(client);
+      final tipos = await cat.tiposMaterialPeligroso();
+      final ctx = await ges.contextoResidente();
+      List<MatPeligrosoVista> mats = [];
+      final idReg = ctx?.idRegistro;
+      if (idReg != null) {
+        mats = await ges.listarMaterialesPeligrosos(idReg);
+      }
+      if (!mounted) return;
+      setState(() {
+        _tiposCatalogo = tipos;
+        _contexto = ctx;
+        _registrados = mats;
+        if (ctx == null) {
+          _avisoMensaje = 'No hay grupo familiar asociado a tu cuenta. Completa el registro inicial.';
+        } else if (idReg == null) {
+          _avisoMensaje = 'No hay un registro de vivienda vigente. Completa el registro del domicilio.';
+        } else {
+          _avisoMensaje = null;
+        }
+        _loading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _loadError = e.toString();
+        _loading = false;
+      });
+    }
   }
 
   void _snack(String mensaje) {
@@ -54,8 +97,14 @@ class _GestionPeligrososScreenState extends State<GestionPeligrososScreen> {
     );
   }
 
-  void _agregar() {
-    if (_tipoSeleccionado == null) {
+  Future<void> _agregar() async {
+    final ctx = _contexto;
+    final idReg = ctx?.idRegistro;
+    if (ctx == null || idReg == null) {
+      _snack(_avisoMensaje ?? 'No se puede guardar sin registro de vivienda vigente.');
+      return;
+    }
+    if (_tipoSeleccionadoId == null) {
       _snack('Selecciona el tipo de material.');
       return;
     }
@@ -64,35 +113,57 @@ class _GestionPeligrososScreenState extends State<GestionPeligrososScreen> {
       _snack('Ingresa una cantidad válida.');
       return;
     }
-    setState(() {
-      _registrados.add(
-        _MaterialPeligroso(
-          tipo: _tipoSeleccionado!,
-          cantidad: c,
-          notas: _notasController.text.trim(),
-        ),
+    try {
+      await GestionResidenteService(Supabase.instance.client).upsertMaterialPeligroso(
+        idRegistro: idReg,
+        idMatPelig: _tipoSeleccionadoId!,
+        cantidad: c,
       );
-      _tipoSeleccionado = null;
-      _cantidadController.text = '1';
-      _notasController.clear();
-    });
-    _snack('Material agregado (maqueta).');
+      setState(() {
+        _tipoSeleccionadoId = null;
+        _cantidadController.text = '1';
+      });
+      final list = await GestionResidenteService(Supabase.instance.client).listarMaterialesPeligrosos(idReg);
+      if (!mounted) return;
+      setState(() => _registrados = list);
+      _snack('Material guardado en tu registro.');
+    } on RegistroResidenteException catch (e) {
+      _snack(e.message);
+    } catch (e) {
+      _snack('No se pudo guardar: $e');
+    }
   }
 
-  void _eliminar(int index) {
+  void _eliminar(MatPeligrosoVista item) {
+    final ctx = _contexto;
+    final idReg = ctx?.idRegistro;
+    if (idReg == null) return;
+
     showDialog<void>(
       context: context,
-      builder: (ctx) => AlertDialog(
+      builder: (ctxDialog) => AlertDialog(
         title: const Text('Eliminar material', style: TextStyle(fontWeight: FontWeight.w700)),
-        content: Text('¿Quitar "${_registrados[index].tipo}" de la lista?'),
+        content: Text('¿Quitar "${item.tipoMat}" del registro?'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancelar')),
+          TextButton(onPressed: () => Navigator.pop(ctxDialog), child: const Text('Cancelar')),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFEF4444), foregroundColor: Colors.white),
-            onPressed: () {
-              setState(() => _registrados.removeAt(index));
-              Navigator.pop(ctx);
-              _snack('Material eliminado.');
+            onPressed: () async {
+              try {
+                await GestionResidenteService(Supabase.instance.client).eliminarMaterialPeligroso(
+                  idRegistro: idReg,
+                  idMatPelig: item.idMatPelig,
+                );
+                if (!ctxDialog.mounted) return;
+                Navigator.pop(ctxDialog);
+                final list =
+                    await GestionResidenteService(Supabase.instance.client).listarMaterialesPeligrosos(idReg);
+                if (!mounted) return;
+                setState(() => _registrados = list);
+                _snack('Material eliminado.');
+              } catch (e) {
+                _snack('No se pudo eliminar: $e');
+              }
             },
             child: const Text('Eliminar'),
           ),
@@ -151,6 +222,31 @@ class _GestionPeligrososScreenState extends State<GestionPeligrososScreen> {
   }
 
   Widget _buildBody() {
+    if (_loading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    if (_loadError != null) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(_loadError!, textAlign: TextAlign.center, style: const TextStyle(color: Colors.red, fontSize: 13)),
+              const SizedBox(height: 12),
+              OutlinedButton.icon(
+                onPressed: _bootstrap,
+                icon: const Icon(Icons.refresh, size: 18),
+                label: const Text('Reintentar'),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    final puedeGuardar = _contexto?.idRegistro != null && _tiposCatalogo.isNotEmpty;
+
     return ColoredBox(
       color: _fondoPagina,
       child: SingleChildScrollView(
@@ -188,6 +284,23 @@ class _GestionPeligrososScreenState extends State<GestionPeligrososScreen> {
                 style: TextStyle(fontSize: 13, color: _textoGris),
               ),
               const SizedBox(height: 20),
+              if (_avisoMensaje != null)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 16),
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFFF7ED),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: const Color(0xFFFDBA74)),
+                    ),
+                    child: Text(
+                      _avisoMensaje!,
+                      style: const TextStyle(fontSize: 13, color: _textoPrincipal, height: 1.35),
+                    ),
+                  ),
+                ),
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(16),
@@ -209,8 +322,9 @@ class _GestionPeligrososScreenState extends State<GestionPeligrososScreen> {
                       style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: _textoPrincipal),
                     ),
                     const SizedBox(height: 6),
-                    DropdownButtonFormField<String>(
-                      initialValue: _tipoSeleccionado,
+                    DropdownButtonFormField<int>(
+                      // ignore: deprecated_member_use
+                      value: _tipoSeleccionadoId,
                       decoration: InputDecoration(
                         hintText: 'Selecciona',
                         filled: true,
@@ -221,8 +335,10 @@ class _GestionPeligrososScreenState extends State<GestionPeligrososScreen> {
                           borderSide: BorderSide.none,
                         ),
                       ),
-                      items: _tiposMaterial.map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
-                      onChanged: (v) => setState(() => _tipoSeleccionado = v),
+                      items: _tiposCatalogo
+                          .map((e) => DropdownMenuItem<int>(value: e.id, child: Text(e.etiqueta)))
+                          .toList(),
+                      onChanged: puedeGuardar ? (v) => setState(() => _tipoSeleccionadoId = v) : null,
                     ),
                     const SizedBox(height: 14),
                     const Text(
@@ -233,31 +349,11 @@ class _GestionPeligrososScreenState extends State<GestionPeligrososScreen> {
                     TextField(
                       controller: _cantidadController,
                       keyboardType: TextInputType.number,
+                      enabled: puedeGuardar,
                       decoration: InputDecoration(
                         filled: true,
                         fillColor: Colors.white,
                         contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(10),
-                          borderSide: BorderSide.none,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 14),
-                    const Text(
-                      'Notas adicionales (opcional)',
-                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: _textoPrincipal),
-                    ),
-                    const SizedBox(height: 6),
-                    TextField(
-                      controller: _notasController,
-                      maxLines: 3,
-                      decoration: InputDecoration(
-                        hintText: 'Información adicional relevante para bomberos',
-                        hintStyle: TextStyle(color: _textoGris, fontSize: 13),
-                        filled: true,
-                        fillColor: Colors.white,
-                        contentPadding: const EdgeInsets.all(14),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(10),
                           borderSide: BorderSide.none,
@@ -269,7 +365,7 @@ class _GestionPeligrososScreenState extends State<GestionPeligrososScreen> {
                       width: double.infinity,
                       height: 48,
                       child: ElevatedButton.icon(
-                        onPressed: _agregar,
+                        onPressed: puedeGuardar ? () => _agregar() : null,
                         icon: const Icon(Icons.add, size: 20),
                         label: const Text('Agregar Material', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
                         style: ElevatedButton.styleFrom(
@@ -315,7 +411,7 @@ class _GestionPeligrososScreenState extends State<GestionPeligrososScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                m.tipo,
+                                m.tipoMat,
                                 style: const TextStyle(
                                   fontWeight: FontWeight.w700,
                                   fontSize: 15,
@@ -327,10 +423,6 @@ class _GestionPeligrososScreenState extends State<GestionPeligrososScreen> {
                                 'Cantidad: ${m.cantidad}',
                                 style: const TextStyle(fontSize: 13, color: _textoGris),
                               ),
-                              if (m.notas.isNotEmpty) ...[
-                                const SizedBox(height: 4),
-                                Text(m.notas, style: const TextStyle(fontSize: 12, color: _textoGris, height: 1.3)),
-                              ],
                             ],
                           ),
                         ),
@@ -343,7 +435,7 @@ class _GestionPeligrososScreenState extends State<GestionPeligrososScreen> {
                               border: Border.all(color: const Color(0xFFE0E0E0)),
                             ),
                             child: InkWell(
-                              onTap: () => _eliminar(index),
+                              onTap: () => _eliminar(m),
                               borderRadius: BorderRadius.circular(10),
                               child: const SizedBox(
                                 width: 40,
@@ -431,12 +523,4 @@ class _GestionPeligrososScreenState extends State<GestionPeligrososScreen> {
       ),
     );
   }
-}
-
-class _MaterialPeligroso {
-  _MaterialPeligroso({required this.tipo, required this.cantidad, required this.notas});
-
-  final String tipo;
-  final int cantidad;
-  final String notas;
 }
