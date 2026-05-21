@@ -146,61 +146,65 @@ class _GestionConfiguracionScreenState extends State<GestionConfiguracionScreen>
     final cuenta = _cuenta;
     if (cuenta == null) return;
     final ctrl = TextEditingController(text: _telefonoParaCampo(cuenta.telefonoTitular));
-    await showDialog<void>(
+    final guardado = await showDialog<bool>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Editar teléfono', style: TextStyle(fontWeight: FontWeight.w700)),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Ingresa 9 dígitos (móvil Chile, empieza por 9). Se guardará como +56…',
-              style: TextStyle(fontSize: 12, color: _textoGris),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: ctrl,
-              keyboardType: TextInputType.phone,
-              decoration: const InputDecoration(hintText: '912345678'),
+      builder: (dialogContext) => StatefulDialogScope(
+        controllers: [ctrl],
+        builder: (_) => AlertDialog(
+          title: const Text('Editar teléfono', style: TextStyle(fontWeight: FontWeight.w700)),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Ingresa 9 dígitos (móvil Chile, empieza por 9). Se guardará como +56…',
+                style: TextStyle(fontSize: 12, color: _textoGris),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: ctrl,
+                keyboardType: TextInputType.phone,
+                decoration: const InputDecoration(hintText: '912345678'),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: const Text('Cancelar')),
+            ElevatedButton(
+              onPressed: () async {
+                final norm = normalizarTelefonoSufijoChile(ctrl.text.trim());
+                if (norm == null) {
+                  ScaffoldMessenger.of(dialogContext).showSnackBar(
+                    const SnackBar(content: Text('Teléfono inválido. Debe ser móvil de 9 dígitos (9xxxxxxxx).')),
+                  );
+                  return;
+                }
+                try {
+                  await GestionResidenteService(Supabase.instance.client).actualizarTelefonoTitular(
+                    idGrupof: cuenta.idGrupof,
+                    telefonoNormalizado: norm,
+                  );
+                  if (!dialogContext.mounted) return;
+                  Navigator.pop(dialogContext, true);
+                } on RegistroResidenteException catch (e) {
+                  if (!dialogContext.mounted) return;
+                  ScaffoldMessenger.of(dialogContext).showSnackBar(SnackBar(content: Text(e.message)));
+                } catch (e) {
+                  if (!dialogContext.mounted) return;
+                  ScaffoldMessenger.of(dialogContext).showSnackBar(SnackBar(content: Text('$e')));
+                }
+              },
+              child: const Text('Guardar'),
             ),
           ],
         ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Cancelar')),
-          ElevatedButton(
-            onPressed: () async {
-              final norm = normalizarTelefonoSufijoChile(ctrl.text.trim());
-              if (norm == null) {
-                ScaffoldMessenger.of(dialogContext).showSnackBar(
-                  const SnackBar(content: Text('Teléfono inválido. Debe ser móvil de 9 dígitos (9xxxxxxxx).')),
-                );
-                return;
-              }
-              try {
-                await GestionResidenteService(Supabase.instance.client).actualizarTelefonoTitular(
-                  idGrupof: cuenta.idGrupof,
-                  telefonoNormalizado: norm,
-                );
-                if (!dialogContext.mounted) return;
-                Navigator.pop(dialogContext);
-                await _bootstrap();
-                if (!mounted) return;
-                _snack('Teléfono actualizado.');
-              } on RegistroResidenteException catch (e) {
-                if (!dialogContext.mounted) return;
-                ScaffoldMessenger.of(dialogContext).showSnackBar(SnackBar(content: Text(e.message)));
-              } catch (e) {
-                if (!dialogContext.mounted) return;
-                ScaffoldMessenger.of(dialogContext).showSnackBar(SnackBar(content: Text('$e')));
-              }
-            },
-            child: const Text('Guardar'),
-          ),
-        ],
       ),
     );
-    ctrl.dispose();
+    if (guardado == true && mounted) {
+      await _bootstrap();
+      if (!mounted) return;
+      _snack('Teléfono actualizado.');
+    }
   }
 
   Future<void> _cerrarSesion() async {

@@ -40,6 +40,7 @@ class _RegistroPaso3State extends State<RegistroPaso3> {
   final _lonManualController = TextEditingController();
 
   GoogleMapController? _mapController;
+  bool _mapListoParaDispose = false;
   LatLng _cameraTarget = const LatLng(_latIni, _lonIni);
   double? _pinLat;
   double? _pinLon;
@@ -135,7 +136,10 @@ class _RegistroPaso3State extends State<RegistroPaso3> {
   @override
   void dispose() {
     _debounceBusqueda?.cancel();
-    _mapController?.dispose();
+    if (_mapListoParaDispose) {
+      _mapController?.dispose();
+    }
+    _mapController = null;
     _busquedaController.dispose();
     _calleController.dispose();
     _nroController.dispose();
@@ -554,6 +558,9 @@ class _RegistroPaso3State extends State<RegistroPaso3> {
                 mapType: MapType.normal,
                 onMapCreated: (c) {
                   _mapController = c;
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    if (mounted) _mapListoParaDispose = true;
+                  });
                 },
                 onTap: _onMapTap,
               ),

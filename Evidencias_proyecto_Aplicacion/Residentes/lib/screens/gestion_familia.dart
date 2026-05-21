@@ -184,7 +184,9 @@ class _GestionFamiliaScreenState extends State<GestionFamiliaScreen> {
 
     showDialog<void>(
       context: context,
-      builder: (dialogContext) => StatefulBuilder(
+      builder: (dialogContext) => StatefulDialogScope(
+        controllers: [anioEdit],
+        builder: (_) => StatefulBuilder(
         builder: (context, setDialog) {
           return AlertDialog(
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -284,7 +286,8 @@ class _GestionFamiliaScreenState extends State<GestionFamiliaScreen> {
           );
         },
       ),
-    ).then((_) => anioEdit.dispose());
+      ),
+    );
   }
 
   void _eliminarMiembro(IntegranteVista m) {

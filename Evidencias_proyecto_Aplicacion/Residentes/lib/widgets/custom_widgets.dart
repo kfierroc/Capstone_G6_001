@@ -184,6 +184,34 @@ class StepIndicator extends StatelessWidget {
   }
 }
 
+/// Envuelve un diálogo y libera [controllers] en [dispose], cuando el route ya se desmontó.
+class StatefulDialogScope extends StatefulWidget {
+  const StatefulDialogScope({
+    super.key,
+    required this.controllers,
+    required this.builder,
+  });
+
+  final List<TextEditingController> controllers;
+  final Widget Function(BuildContext context) builder;
+
+  @override
+  State<StatefulDialogScope> createState() => _StatefulDialogScopeState();
+}
+
+class _StatefulDialogScopeState extends State<StatefulDialogScope> {
+  @override
+  void dispose() {
+    for (final c in widget.controllers) {
+      c.dispose();
+    }
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.builder(context);
+}
+
 class InputLabel extends StatelessWidget {
   final String label;
   final bool required;

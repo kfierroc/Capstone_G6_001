@@ -249,7 +249,9 @@ class _GestionDomicilioScreenState extends State<GestionDomicilioScreen> {
 
     showDialog<void>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
+      builder: (dialogContext) => StatefulDialogScope(
+        controllers: [calleCtrl, nroCtrl, unidadCtrl, descCtrl, latCtrl, lonCtrl],
+        builder: (_) => AlertDialog(
         title: const Text('Editar dirección', style: TextStyle(fontWeight: FontWeight.w700)),
         content: SingleChildScrollView(
           child: Column(
@@ -332,14 +334,8 @@ class _GestionDomicilioScreenState extends State<GestionDomicilioScreen> {
           ),
         ],
       ),
-    ).then((_) {
-      calleCtrl.dispose();
-      nroCtrl.dispose();
-      unidadCtrl.dispose();
-      descCtrl.dispose();
-      latCtrl.dispose();
-      lonCtrl.dispose();
-    });
+      ),
+    );
   }
 
   void _editarDetallesVivienda() {
@@ -477,41 +473,44 @@ class _GestionDomicilioScreenState extends State<GestionDomicilioScreen> {
     final ctrl = TextEditingController(text: dom.notasV ?? '');
     showDialog<void>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Instrucciones especiales', style: TextStyle(fontWeight: FontWeight.w700)),
-        content: TextField(
-          controller: ctrl,
-          maxLines: 4,
-          decoration: const InputDecoration(
-            hintText: 'Información útil para emergencias (máx. 100 caracteres en BD)',
+      builder: (dialogContext) => StatefulDialogScope(
+        controllers: [ctrl],
+        builder: (_) => AlertDialog(
+          title: const Text('Instrucciones especiales', style: TextStyle(fontWeight: FontWeight.w700)),
+          content: TextField(
+            controller: ctrl,
+            maxLines: 4,
+            decoration: const InputDecoration(
+              hintText: 'Información útil para emergencias (máx. 100 caracteres en BD)',
+            ),
           ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Cancelar')),
+            ElevatedButton(
+              onPressed: () async {
+                try {
+                  await GestionResidenteService(Supabase.instance.client).guardarReferenciasRegistro(
+                    idRegistro: dom.idRegistro,
+                    unidad: dom.unidad,
+                    descDeptoCond: dom.descDeptoCond,
+                    notasV: ctrl.text.trim().isEmpty ? null : ctrl.text.trim(),
+                  );
+                  if (!dialogContext.mounted) return;
+                  Navigator.pop(dialogContext);
+                  await _recargar();
+                  if (!mounted) return;
+                  _snack('Instrucciones guardadas.');
+                } catch (e) {
+                  if (!dialogContext.mounted) return;
+                  ScaffoldMessenger.of(dialogContext).showSnackBar(SnackBar(content: Text('$e')));
+                }
+              },
+              child: const Text('Guardar'),
+            ),
+          ],
         ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Cancelar')),
-          ElevatedButton(
-            onPressed: () async {
-              try {
-                await GestionResidenteService(Supabase.instance.client).guardarReferenciasRegistro(
-                  idRegistro: dom.idRegistro,
-                  unidad: dom.unidad,
-                  descDeptoCond: dom.descDeptoCond,
-                  notasV: ctrl.text.trim().isEmpty ? null : ctrl.text.trim(),
-                );
-                if (!dialogContext.mounted) return;
-                Navigator.pop(dialogContext);
-                await _recargar();
-                if (!mounted) return;
-                _snack('Instrucciones guardadas.');
-              } catch (e) {
-                if (!dialogContext.mounted) return;
-                ScaffoldMessenger.of(dialogContext).showSnackBar(SnackBar(content: Text('$e')));
-              }
-            },
-            child: const Text('Guardar'),
-          ),
-        ],
       ),
-    ).then((_) => ctrl.dispose());
+    );
   }
 
   Widget _botonEditar({required VoidCallback onTap, bool azul = false}) {

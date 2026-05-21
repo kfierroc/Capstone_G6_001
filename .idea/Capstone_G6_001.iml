@@ -9,6 +9,9 @@
       <excludeFolder url="file://$MODULE_DIR$/Evidencias_proyecto_Aplicacion/Residentes/.dart_tool" />
       <excludeFolder url="file://$MODULE_DIR$/Evidencias_proyecto_Aplicacion/Residentes/.pub" />
       <excludeFolder url="file://$MODULE_DIR$/Evidencias_proyecto_Aplicacion/Residentes/build" />
+      <excludeFolder url="file://$MODULE_DIR$/Evidencias_proyecto_Aplicacion/bomberos/.dart_tool" />
+      <excludeFolder url="file://$MODULE_DIR$/Evidencias_proyecto_Aplicacion/bomberos/.pub" />
+      <excludeFolder url="file://$MODULE_DIR$/Evidencias_proyecto_Aplicacion/bomberos/build" />
     </content>
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />
