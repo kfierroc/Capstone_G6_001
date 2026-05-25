@@ -6,6 +6,7 @@ import '../services/catalogos_residente_service.dart';
 import '../services/gestion_residente_service.dart';
 import '../services/registro_residente_service.dart';
 import '../widgets/custom_widgets.dart';
+import '../widgets/recordatorio_permanencia_ui.dart';
 
 /// Home del residente: barra superior verde + contenido en tarjeta blanca + navegación inferior.
 /// Condiciones por integrante: catálogo `categ_condiciones` / `condiciones` desde Supabase (maqueta de miembros local).
@@ -81,6 +82,10 @@ class _GestionFamiliaScreenState extends State<GestionFamiliaScreen> {
             ctx == null ? 'No hay grupo familiar asociado a tu cuenta. Completa el registro inicial.' : null;
         _catalogLoading = false;
         _loadingContext = false;
+      });
+      if (!mounted) return;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        ejecutarRecordatorioPermanenciaTrasCarga(context);
       });
     } catch (e) {
       if (!mounted) return;
@@ -348,19 +353,7 @@ class _GestionFamiliaScreenState extends State<GestionFamiliaScreen> {
             onBack: () {
               if (Navigator.canPop(context)) Navigator.pop(context);
             },
-            trailing: Material(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
-              child: InkWell(
-                onTap: () => _snack('Acción de ejemplo (sin integración).'),
-                borderRadius: BorderRadius.circular(12),
-                child: SizedBox(
-                  width: 44,
-                  height: 44,
-                  child: Icon(Icons.notifications_none_rounded, color: _verdeApp, size: 22),
-                ),
-              ),
-            ),
+            trailing: const NotificacionesResidenteButton(),
           ),
           Expanded(child: _buildFamiliaTab()),
         ],

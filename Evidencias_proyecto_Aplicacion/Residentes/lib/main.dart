@@ -3,6 +3,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'config/maps_loader.dart';
+import 'services/notificacion_local_service.dart';
 import 'login/login_screen.dart';
 import 'screens/gestion_familia.dart';
 import 'screens/gestion_mascotas.dart';
@@ -25,6 +26,8 @@ Future<void> main() async {
     throw Exception('Configura SUPABASE_URL y SUPABASE_ANON_KEY en el archivo .env');
   }
   await Supabase.initialize(url: url, anonKey: anonKey);
+  await NotificacionLocalService.inicializar();
+  await NotificacionLocalService.solicitarPermisoAndroid();
   runApp(const FireDataApp());
 }
 

@@ -166,21 +166,125 @@ class GestionResidenteService {
     return 1;
   }
 
-  /// Grupo familiar del usuario y [registro_v] vigente asociado (para pisos / materiales).
-  Future<ContextoResidente?> contextoResidente() async {
+  static const _selectRegistroDomicilio = '''
+id_registro,
+id_residencia,
+unidad,
+desc_depto_cond,
+notas_v,
+fecha_ult_confirm,
+fecha_expiracion,
+fecha_ini_r,
+id_tipo_v,
+id_estado_v,
+vigente,
+residencia (
+  id_residencia,
+  calle,
+  nro_direccion,
+  lat,
+  lon,
+  cut_com
+),
+tipo_vivienda ( tipo_v ),
+estado_vivienda ( estado_v ),
+piso_v (
+  numerop,
+  tipo_mat_piso ( material_piso )
+)
+''';
+
+  List<Map<String, dynamic>> _filas(dynamic raw) {
+    if (raw is! List) return [];
+    return raw.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+  }
+
+  Map<String, dynamic>? _filaUnica(dynamic raw) {
+    if (raw is Map) return Map<String, dynamic>.from(raw);
+    if (raw is List && raw.isNotEmpty && raw.first is Map) {
+      return Map<String, dynamic>.from(raw.first as Map);
+    }
+    return null;
+  }
+
+  DateTime _parseFecha(dynamic v) {
+    if (v is String) return DateTime.parse(v.split('T').first);
+    if (v is DateTime) return DateTime(v.year, v.month, v.day);
+    return DateTime.now();
+  }
+
+  static const _selectRegistroBase = '''
+id_registro,
+id_residencia,
+unidad,
+desc_depto_cond,
+notas_v,
+fecha_ult_confirm,
+fecha_expiracion,
+fecha_ini_r,
+id_tipo_v,
+id_estado_v,
+vigente
+''';
+
+  Future<List<Map<String, dynamic>>> _consultarRegistros({
+    required int idGrupof,
+    required String select,
+    required bool soloVigente,
+  }) async {
+    var q = _client.from('registro_v').select(select).eq('id_grupof', idGrupof);
+    if (soloVigente) {
+      q = q.eq('vigente', true);
+    } else {
+      q = q.isFilter('fecha_fin_r', null);
+    }
+    final raw = await q.order('fecha_ini_r', ascending: false).limit(1);
+    return _filas(raw);
+  }
+
+  /// Registro de vivienda activo: primero `vigente = true`, si no hay fila, `fecha_fin_r` nula.
+  Future<Map<String, dynamic>?> _registroDomicilioActivo(int idGrupof) async {
+    try {
+      var list = await _consultarRegistros(idGrupof: idGrupof, select: _selectRegistroDomicilio, soloVigente: true);
+      if (list.isEmpty) {
+        list = await _consultarRegistros(idGrupof: idGrupof, select: _selectRegistroDomicilio, soloVigente: false);
+      }
+      if (list.isNotEmpty) return list.first;
+    } on PostgrestException {
+      // Sin FKs en el esquema de Supabase: consulta plana de registro_v.
+    }
+
+    var list = await _consultarRegistros(idGrupof: idGrupof, select: _selectRegistroBase, soloVigente: true);
+    if (list.isEmpty) {
+      list = await _consultarRegistros(idGrupof: idGrupof, select: _selectRegistroBase, soloVigente: false);
+    }
+    return list.isEmpty ? null : list.first;
+  }
+
+  Future<Map<String, dynamic>?> _residenciaPorId(int idResidencia) async {
+    final row = await _client
+        .from('residencia')
+        .select('id_residencia, calle, nro_direccion, lat, lon, cut_com')
+        .eq('id_residencia', idResidencia)
+        .maybeSingle();
+    if (row == null) return null;
+    return Map<String, dynamic>.from(row);
+  }
+
+  Future<int?> _idGrupofUsuario() async {
     final uid = _client.auth.currentUser?.id;
     if (uid == null) return null;
-
     final gf = await _client.from('grupofamiliar').select('id_grupof').eq('user_id', uid).maybeSingle();
     if (gf == null) return null;
-    final idGf = (gf['id_grupof'] as num).toInt();
+    return (gf['id_grupof'] as num).toInt();
+  }
 
-    final rv = await _client
-        .from('registro_v')
-        .select('id_registro')
-        .eq('id_grupof', idGf)
-        .eq('vigente', true)
-        .maybeSingle();
+  /// Grupo familiar del usuario y [registro_v] vigente asociado (para pisos / materiales).
+  Future<ContextoResidente?> contextoResidente() async {
+    final idGf = await _idGrupofUsuario();
+    if (idGf == null) return null;
+
+    final rv = await _registroDomicilioActivo(idGf);
     final idReg = rv == null ? null : (rv['id_registro'] as num).toInt();
     return ContextoResidente(idGrupof: idGf, idRegistro: idReg);
   }
@@ -445,26 +549,19 @@ class GestionResidenteService {
     return (row['id_mat_piso'] as num).toInt();
   }
 
-  /// Vista completa del domicilio vigente o null si no hay grupo/registro.
+  /// Vista completa del domicilio vigente o null si no hay grupo/registro/residencia.
   Future<DomicilioVista?> obtenerDomicilio() async {
-    final ctx = await contextoResidente();
-    if (ctx == null || ctx.idRegistro == null) return null;
+    final idGf = await _idGrupofUsuario();
+    if (idGf == null) return null;
 
-    final idReg = ctx.idRegistro!;
-    final idGf = ctx.idGrupof;
-
-    final rv = await _client
-        .from('registro_v')
-        .select(
-          'id_registro, unidad, desc_depto_cond, notas_v, fecha_ult_confirm, fecha_expiracion, fecha_ini_r, id_residencia, id_tipo_v, id_estado_v',
-        )
-        .eq('id_registro', idReg)
-        .eq('vigente', true)
-        .maybeSingle();
+    final rv = await _registroDomicilioActivo(idGf);
     if (rv == null) return null;
 
+    final idReg = (rv['id_registro'] as num).toInt();
     final idRes = (rv['id_residencia'] as num).toInt();
-    final resRow = await _client.from('residencia').select('calle, nro_direccion, lat, lon, cut_com').eq('id_residencia', idRes).maybeSingle();
+
+    var resRow = _filaUnica(rv['residencia']);
+    resRow ??= await _residenciaPorId(idRes);
     if (resRow == null) return null;
 
     final cut = (resRow['cut_com'] as num).toInt();
@@ -473,31 +570,38 @@ class GestionResidenteService {
 
     final idTipo = (rv['id_tipo_v'] as num).toInt();
     final idEst = (rv['id_estado_v'] as num).toInt();
-    final tipoRow = await _client.from('tipo_vivienda').select('tipo_v').eq('id_tipo_v', idTipo).maybeSingle();
-    final estRow = await _client.from('estado_vivienda').select('estado_v').eq('id_estado_v', idEst).maybeSingle();
-    final tipoV = (tipoRow?['tipo_v'] as String?)?.trim() ?? '';
-    final estV = (estRow?['estado_v'] as String?)?.trim() ?? '';
 
-    final rawPisos = await _client
-        .from('piso_v')
-        .select('numerop, tipo_mat_piso(material_piso)')
-        .eq('id_registro', idReg)
-        .order('numerop');
-
-    final pisos = <PisoDomicilioVista>[];
-    for (final row in List<Map<String, dynamic>>.from(rawPisos as List)) {
-      final n = (row['numerop'] as num).toInt();
-      String mat = '';
-      final nested = row['tipo_mat_piso'];
-      if (nested is Map<String, dynamic>) {
-        mat = (nested['material_piso'] as String?)?.trim() ?? '';
-      }
-      pisos.add(PisoDomicilioVista(numerop: n, materialPiso: mat.isEmpty ? '—' : mat));
+    var tipoV = (_filaUnica(rv['tipo_vivienda'])?['tipo_v'] as String?)?.trim() ?? '';
+    var estV = (_filaUnica(rv['estado_vivienda'])?['estado_v'] as String?)?.trim() ?? '';
+    if (tipoV.isEmpty) {
+      final tipoRow = await _client.from('tipo_vivienda').select('tipo_v').eq('id_tipo_v', idTipo).maybeSingle();
+      tipoV = (tipoRow?['tipo_v'] as String?)?.trim() ?? '';
+    }
+    if (estV.isEmpty) {
+      final estRow = await _client.from('estado_vivienda').select('estado_v').eq('id_estado_v', idEst).maybeSingle();
+      estV = (estRow?['estado_v'] as String?)?.trim() ?? '';
     }
 
-    DateTime parseDate(dynamic v) {
-      if (v is String) return DateTime.parse(v.split('T').first);
-      return DateTime.now();
+    final pisos = <PisoDomicilioVista>[];
+    final rawPisos = rv['piso_v'];
+    if (rawPisos is List) {
+      for (final row in _filas(rawPisos)) {
+        final n = (row['numerop'] as num).toInt();
+        var mat = (_filaUnica(row['tipo_mat_piso'])?['material_piso'] as String?)?.trim() ?? '';
+        pisos.add(PisoDomicilioVista(numerop: n, materialPiso: mat.isEmpty ? '—' : mat));
+      }
+    }
+    if (pisos.isEmpty) {
+      final rawPisosDb = await _client
+          .from('piso_v')
+          .select('numerop, tipo_mat_piso(material_piso)')
+          .eq('id_registro', idReg)
+          .order('numerop');
+      for (final row in _filas(rawPisosDb)) {
+        final n = (row['numerop'] as num).toInt();
+        var mat = (_filaUnica(row['tipo_mat_piso'])?['material_piso'] as String?)?.trim() ?? '';
+        pisos.add(PisoDomicilioVista(numerop: n, materialPiso: mat.isEmpty ? '—' : mat));
+      }
     }
 
     return DomicilioVista(
@@ -517,9 +621,9 @@ class GestionResidenteService {
       estadoVivienda: estV,
       idTipoV: idTipo,
       idEstadoV: idEst,
-      fechaUltConfirm: parseDate(rv['fecha_ult_confirm']),
-      fechaExpiracion: parseDate(rv['fecha_expiracion']),
-      fechaIniR: parseDate(rv['fecha_ini_r']),
+      fechaUltConfirm: _parseFecha(rv['fecha_ult_confirm']),
+      fechaExpiracion: _parseFecha(rv['fecha_expiracion']),
+      fechaIniR: _parseFecha(rv['fecha_ini_r']),
       pisos: pisos,
     );
   }
@@ -588,13 +692,13 @@ class GestionResidenteService {
     }
   }
 
-  /// Renueva confirmación y fecha de expiración (1–24 meses desde hoy).
+  /// Renueva confirmación y fecha de expiración (1–6 meses desde hoy).
   Future<void> renovarPermanenciaMeses({
     required int idRegistro,
     required int meses,
   }) async {
-    if (meses < 1 || meses > 24) {
-      throw RegistroResidenteException('El período debe estar entre 1 y 24 meses.');
+    if (meses < 1 || meses > 6) {
+      throw RegistroResidenteException('El período debe estar entre 1 y 6 meses.');
     }
     final hoy = _soloFecha(DateTime.now());
     final exp = _addCalendarMonths(hoy, meses);

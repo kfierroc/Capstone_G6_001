@@ -5,7 +5,9 @@ import '../login/login_screen.dart';
 import '../registro/registro_models.dart';
 import '../services/gestion_residente_service.dart';
 import '../services/registro_residente_service.dart';
+import '../services/recordatorio_permanencia_service.dart';
 import '../widgets/custom_widgets.dart';
+import '../widgets/recordatorio_permanencia_ui.dart';
 
 /// Configuración de cuenta con datos de `grupofamiliar`, auth y `registro_v`.
 class GestionConfiguracionScreen extends StatefulWidget {
@@ -16,7 +18,6 @@ class GestionConfiguracionScreen extends StatefulWidget {
 }
 
 class _GestionConfiguracionScreenState extends State<GestionConfiguracionScreen> {
-  static const _verdeApp = Color(0xFF00A84E);
   static const _fondoPagina = Color(0xFFF2F4F7);
   static const _textoPrincipal = Color(0xFF1A1A2E);
   static const _textoGris = Color(0xFF6B7280);
@@ -38,8 +39,6 @@ class _GestionConfiguracionScreenState extends State<GestionConfiguracionScreen>
     '4 meses',
     '5 meses',
     '6 meses',
-    '1 año',
-    'Más de 1 año',
   ];
 
   CuentaConfigVista? _cuenta;
@@ -64,20 +63,14 @@ class _GestionConfiguracionScreenState extends State<GestionConfiguracionScreen>
         return 5;
       case '6 meses':
         return 6;
-      case '1 año':
-        return 12;
-      case 'Más de 1 año':
-        return 18;
       default:
         return 3;
     }
   }
 
   static String _etiquetaDesdeMeses(int meses) {
-    final m = meses.clamp(1, 24);
-    if (m <= 6) return m == 1 ? '1 mes' : '$m meses';
-    if (m <= 12) return '1 año';
-    return 'Más de 1 año';
+    final m = meses.clamp(1, 6);
+    return m == 1 ? '1 mes' : '$m meses';
   }
 
   static int _inferirMeses(DateTime? a, DateTime? b) {
@@ -86,7 +79,7 @@ class _GestionConfiguracionScreenState extends State<GestionConfiguracionScreen>
     final bu = DateTime(b.year, b.month, b.day);
     var months = (bu.year - au.year) * 12 + (bu.month - au.month);
     if (bu.day < au.day) months--;
-    return months.clamp(1, 24);
+    return months.clamp(1, 6);
   }
 
   /// Muestra solo 9 dígitos si el teléfono cumple el formato +56.
@@ -125,6 +118,10 @@ class _GestionConfiguracionScreenState extends State<GestionConfiguracionScreen>
           );
         }
         _loading = false;
+      });
+      if (!mounted) return;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        ejecutarRecordatorioPermanenciaTrasCarga(context);
       });
     } catch (e) {
       if (!mounted) return;
@@ -252,6 +249,7 @@ class _GestionConfiguracionScreenState extends State<GestionConfiguracionScreen>
             onPressed: () async {
               try {
                 await GestionResidenteService(Supabase.instance.client).marcarRegistroNoVigente(idReg);
+                await RecordatorioPermanenciaService(Supabase.instance.client).cancelarAlDesvincular(idReg);
                 if (!dialogContext.mounted) return;
                 Navigator.pop(dialogContext);
                 await Supabase.instance.client.auth.signOut();
@@ -279,10 +277,13 @@ class _GestionConfiguracionScreenState extends State<GestionConfiguracionScreen>
     if (v == null || _idRegistro == null) return;
     final meses = _mesesDesdeEtiqueta(v);
     try {
+      final idReg = _idRegistro!;
       await GestionResidenteService(Supabase.instance.client).renovarPermanenciaMeses(
-        idRegistro: _idRegistro!,
+        idRegistro: idReg,
         meses: meses,
       );
+      await RecordatorioPermanenciaService(Supabase.instance.client)
+          .sincronizarTrasActualizarPermanencia(idReg);
       setState(() => _tiempoPermanenciaSeleccion = v);
       await _bootstrap();
       if (!mounted) return;
@@ -345,19 +346,7 @@ class _GestionConfiguracionScreenState extends State<GestionConfiguracionScreen>
             onBack: () {
               if (Navigator.canPop(context)) Navigator.pop(context);
             },
-            trailing: Material(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
-              child: InkWell(
-                onTap: () => _snack('Acción de ejemplo (sin integración).'),
-                borderRadius: BorderRadius.circular(12),
-                child: SizedBox(
-                  width: 44,
-                  height: 44,
-                  child: Icon(Icons.notifications_none_rounded, color: _verdeApp, size: 22),
-                ),
-              ),
-            ),
+            trailing: const NotificacionesResidenteButton(),
           ),
           Expanded(child: _buildBody()),
         ],
@@ -517,7 +506,8 @@ class _GestionConfiguracionScreenState extends State<GestionConfiguracionScreen>
                         SizedBox(width: 10),
                         Expanded(
                           child: Text(
-                            'Cuando el tiempo en la residencia se agota, el grupo familiar puede desvincularse del domicilio. Actualiza tu permanencia para mantener los datos al día.',
+                            'Cada mes te pediremos confirmar que tus datos siguen correctos (hasta que desvincules el domicilio). '
+                            'Cuando el tiempo declarado se agota, actualiza la permanencia o desvincula el domicilio.',
                             style: TextStyle(fontSize: 12, color: _azulInfo, height: 1.35),
                           ),
                         ),
@@ -525,7 +515,7 @@ class _GestionConfiguracionScreenState extends State<GestionConfiguracionScreen>
                     ),
                     const SizedBox(height: 14),
                     const Text(
-                      'Actualizar tiempo de permanencia',
+                      'Actualizar tiempo de permanencia (máx. 6 meses)',
                       style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: _textoPrincipal),
                     ),
                     const SizedBox(height: 8),

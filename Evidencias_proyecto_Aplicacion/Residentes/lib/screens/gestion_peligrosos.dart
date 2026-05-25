@@ -5,6 +5,7 @@ import '../services/catalogos_residente_service.dart';
 import '../services/gestion_residente_service.dart';
 import '../services/registro_residente_service.dart';
 import '../widgets/custom_widgets.dart';
+import '../widgets/recordatorio_permanencia_ui.dart';
 
 /// Materiales peligrosos por `registro_v` vigente (`mat_peligroso`).
 class GestionPeligrososScreen extends StatefulWidget {
@@ -15,7 +16,6 @@ class GestionPeligrososScreen extends StatefulWidget {
 }
 
 class _GestionPeligrososScreenState extends State<GestionPeligrososScreen> {
-  static const _verdeApp = Color(0xFF00A84E);
   static const _fondoPagina = Color(0xFFF2F4F7);
   static const _textoPrincipal = Color(0xFF1A1A2E);
   static const _textoGris = Color(0xFF6B7280);
@@ -80,6 +80,10 @@ class _GestionPeligrososScreenState extends State<GestionPeligrososScreen> {
           _avisoMensaje = null;
         }
         _loading = false;
+      });
+      if (!mounted) return;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        ejecutarRecordatorioPermanenciaTrasCarga(context);
       });
     } catch (e) {
       if (!mounted) return;
@@ -200,19 +204,7 @@ class _GestionPeligrososScreenState extends State<GestionPeligrososScreen> {
             onBack: () {
               if (Navigator.canPop(context)) Navigator.pop(context);
             },
-            trailing: Material(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
-              child: InkWell(
-                onTap: () => _snack('Acción de ejemplo (sin integración).'),
-                borderRadius: BorderRadius.circular(12),
-                child: SizedBox(
-                  width: 44,
-                  height: 44,
-                  child: Icon(Icons.notifications_none_rounded, color: _verdeApp, size: 22),
-                ),
-              ),
-            ),
+            trailing: const NotificacionesResidenteButton(),
           ),
           Expanded(child: _buildBody()),
         ],
