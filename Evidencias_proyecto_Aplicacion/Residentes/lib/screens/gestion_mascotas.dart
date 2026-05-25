@@ -5,6 +5,7 @@ import '../services/catalogos_residente_service.dart';
 import '../services/gestion_residente_service.dart';
 import '../services/registro_residente_service.dart';
 import '../widgets/custom_widgets.dart';
+import '../widgets/recordatorio_permanencia_ui.dart';
 
 /// Gestión de mascotas con catálogos y tabla `mascota` en Supabase.
 class GestionMascotasScreen extends StatefulWidget {
@@ -15,7 +16,6 @@ class GestionMascotasScreen extends StatefulWidget {
 }
 
 class _GestionMascotasScreenState extends State<GestionMascotasScreen> {
-  static const _verdeApp = Color(0xFF00A84E);
   static const _azul = Color(0xFF3D7BF5);
   static const _bordeGris = Color(0xFFE0E0E0);
   static const _fondoPagina = Color(0xFFF2F4F7);
@@ -76,6 +76,10 @@ class _GestionMascotasScreenState extends State<GestionMascotasScreen> {
         _sinGrupoMensaje =
             ctx == null ? 'No hay grupo familiar asociado a tu cuenta. Completa el registro inicial.' : null;
         _loading = false;
+      });
+      if (!mounted) return;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        ejecutarRecordatorioPermanenciaTrasCarga(context);
       });
     } catch (e) {
       if (!mounted) return;
@@ -231,19 +235,7 @@ class _GestionMascotasScreenState extends State<GestionMascotasScreen> {
             onBack: () {
               if (Navigator.canPop(context)) Navigator.pop(context);
             },
-            trailing: Material(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
-              child: InkWell(
-                onTap: () => _snack('Acción de ejemplo (sin integración).'),
-                borderRadius: BorderRadius.circular(12),
-                child: SizedBox(
-                  width: 44,
-                  height: 44,
-                  child: Icon(Icons.notifications_none_rounded, color: _verdeApp, size: 22),
-                ),
-              ),
-            ),
+            trailing: const NotificacionesResidenteButton(),
           ),
           Expanded(child: _buildMascotasBody()),
         ],

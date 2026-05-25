@@ -3,8 +3,10 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../services/catalogos_residente_service.dart';
 import '../services/gestion_residente_service.dart';
+import '../services/recordatorio_permanencia_service.dart';
 import '../services/registro_residente_service.dart';
 import '../widgets/custom_widgets.dart';
+import '../widgets/recordatorio_permanencia_ui.dart';
 
 /// Pantalla de domicilio con datos de `residencia`, `registro_v` y `piso_v`.
 class GestionDomicilioScreen extends StatefulWidget {
@@ -15,7 +17,6 @@ class GestionDomicilioScreen extends StatefulWidget {
 }
 
 class _GestionDomicilioScreenState extends State<GestionDomicilioScreen> {
-  static const _verdeApp = Color(0xFF00A84E);
   static const _azul = Color(0xFF3D7BF5);
   static const _azulTitulo = Color(0xFF2C5BA9);
   static const _azulFondo = Color(0xFFF0F7FF);
@@ -36,8 +37,6 @@ class _GestionDomicilioScreenState extends State<GestionDomicilioScreen> {
     '4 meses',
     '5 meses',
     '6 meses',
-    '1 año',
-    'Más de 1 año',
   ];
 
   DomicilioVista? _dom;
@@ -74,20 +73,14 @@ class _GestionDomicilioScreenState extends State<GestionDomicilioScreen> {
         return 5;
       case '6 meses':
         return 6;
-      case '1 año':
-        return 12;
-      case 'Más de 1 año':
-        return 18;
       default:
         return 3;
     }
   }
 
   static String _etiquetaDesdeMeses(int meses) {
-    final m = meses.clamp(1, 24);
-    if (m <= 6) return m == 1 ? '1 mes' : '$m meses';
-    if (m <= 12) return '1 año';
-    return 'Más de 1 año';
+    final m = meses.clamp(1, 6);
+    return m == 1 ? '1 mes' : '$m meses';
   }
 
   static int _inferirMesesRenovacion(DomicilioVista d) {
@@ -95,13 +88,26 @@ class _GestionDomicilioScreenState extends State<GestionDomicilioScreen> {
     final b = DateTime(d.fechaExpiracion.year, d.fechaExpiracion.month, d.fechaExpiracion.day);
     var months = (b.year - a.year) * 12 + (b.month - a.month);
     if (b.day < a.day) months--;
-    return months.clamp(1, 24);
+    return months.clamp(1, 6);
   }
 
   @override
   void initState() {
     super.initState();
     _bootstrap();
+  }
+
+  String _mensajeSinDomicilio(ContextoResidente? ctx) {
+    if (ctx == null) {
+      return 'No hay grupo familiar vinculado a tu usuario. '
+          'En la base debe existir una fila en grupofamiliar con tu user_id de Supabase Auth.';
+    }
+    if (ctx.idRegistro == null) {
+      return 'Hay grupo familiar, pero no hay registro de vivienda activo (registro_v con vigente = true '
+          'o fecha_fin_r nula) para tu id_grupof.';
+    }
+    return 'El registro de vivienda existe, pero no se pudo leer la residencia asociada. '
+        'Revisa que la fila en residencia exista y que las políticas RLS permitan SELECT.';
   }
 
   Future<void> _bootstrap() async {
@@ -117,6 +123,7 @@ class _GestionDomicilioScreenState extends State<GestionDomicilioScreen> {
       final tipos = await cat.tiposVivienda();
       final estados = await cat.estadosVivienda();
       final mats = await cat.materialesPiso();
+      final ctx = await ges.contextoResidente();
       final dom = await ges.obtenerDomicilio();
       if (!mounted) return;
       setState(() {
@@ -126,8 +133,12 @@ class _GestionDomicilioScreenState extends State<GestionDomicilioScreen> {
         _dom = dom;
         _pisosLocales = dom == null ? [] : List<PisoDomicilioVista>.from(dom.pisos);
         _materialDepartamentoSeleccion = dom?.materialDepartamentoSiAplica ?? (_materialesPisoCatalogo.first);
-        _sinDatos = dom == null ? 'No hay domicilio registrado para tu cuenta. Completa el registro inicial.' : null;
+        _sinDatos = dom == null ? _mensajeSinDomicilio(ctx) : null;
         _loading = false;
+      });
+      if (!mounted) return;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        ejecutarRecordatorioPermanenciaTrasCarga(context);
       });
     } catch (e) {
       if (!mounted) return;
@@ -425,6 +436,8 @@ class _GestionDomicilioScreenState extends State<GestionDomicilioScreen> {
                       estadoViviendaEtiqueta: estado,
                     );
                     await ges.renovarPermanenciaMeses(idRegistro: dom.idRegistro, meses: meses);
+                    await RecordatorioPermanenciaService(Supabase.instance.client)
+                        .sincronizarTrasActualizarPermanencia(dom.idRegistro);
                     if (tipo == _tipoDepartamento) {
                       await ges.reemplazarPisos(
                         idRegistro: dom.idRegistro,
@@ -735,19 +748,7 @@ class _GestionDomicilioScreenState extends State<GestionDomicilioScreen> {
             onBack: () {
               if (Navigator.canPop(context)) Navigator.pop(context);
             },
-            trailing: Material(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
-              child: InkWell(
-                onTap: () => _snack('Acción de ejemplo (sin integración).'),
-                borderRadius: BorderRadius.circular(12),
-                child: SizedBox(
-                  width: 44,
-                  height: 44,
-                  child: Icon(Icons.notifications_none_rounded, color: _verdeApp, size: 22),
-                ),
-              ),
-            ),
+            trailing: const NotificacionesResidenteButton(),
           ),
           Expanded(child: _buildBody()),
         ],
