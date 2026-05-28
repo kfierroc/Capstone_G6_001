@@ -7,6 +7,7 @@ import '../services/recordatorio_permanencia_service.dart';
 import '../services/registro_residente_service.dart';
 import '../widgets/custom_widgets.dart';
 import '../widgets/recordatorio_permanencia_ui.dart';
+import 'editar_domicilio_ubicacion_screen.dart';
 
 /// Pantalla de domicilio con datos de `residencia`, `registro_v` y `piso_v`.
 class GestionDomicilioScreen extends StatefulWidget {
@@ -29,6 +30,12 @@ class _GestionDomicilioScreenState extends State<GestionDomicilioScreen> {
   static const _navDomicilioBg = Color(0xFFE8F4FF);
 
   static const String _tipoDepartamento = 'Departamento';
+  static const String _tipoCondominio = 'Condominio';
+
+  bool _esDeptoOCondominio(String tipo) {
+    final t = tipo.trim();
+    return t == _tipoDepartamento || t == _tipoCondominio;
+  }
 
   static const List<String> _etiquetasMeses = [
     '1 mes',
@@ -247,106 +254,20 @@ class _GestionDomicilioScreenState extends State<GestionDomicilioScreen> {
 
   bool get _esDepartamento => _dom?.esDepartamento ?? false;
 
-  void _editarDireccion() {
+  Future<void> _editarDireccion() async {
     final dom = _dom;
     if (dom == null) return;
 
-    final calleCtrl = TextEditingController(text: dom.calle);
-    final nroCtrl = TextEditingController(text: '${dom.nroDireccion}');
-    final unidadCtrl = TextEditingController(text: dom.unidad ?? '');
-    final descCtrl = TextEditingController(text: dom.descDeptoCond ?? '');
-    final latCtrl = TextEditingController(text: dom.lat.toString());
-    final lonCtrl = TextEditingController(text: dom.lon.toString());
-
-    showDialog<void>(
-      context: context,
-      builder: (dialogContext) => StatefulDialogScope(
-        controllers: [calleCtrl, nroCtrl, unidadCtrl, descCtrl, latCtrl, lonCtrl],
-        builder: (_) => AlertDialog(
-        title: const Text('Editar dirección', style: TextStyle(fontWeight: FontWeight.w700)),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text('Calle', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
-              const SizedBox(height: 6),
-              TextField(controller: calleCtrl),
-              const SizedBox(height: 12),
-              const Text('Número', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
-              const SizedBox(height: 6),
-              TextField(controller: nroCtrl, keyboardType: TextInputType.number),
-              const SizedBox(height: 12),
-              const Text('Unidad / Depto (opcional)', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
-              const SizedBox(height: 6),
-              TextField(controller: unidadCtrl),
-              const SizedBox(height: 12),
-              const Text('Interior / referencia', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
-              const SizedBox(height: 6),
-              TextField(controller: descCtrl),
-              const SizedBox(height: 12),
-              const Text('Latitud', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
-              const SizedBox(height: 6),
-              TextField(controller: latCtrl, keyboardType: const TextInputType.numberWithOptions(decimal: true)),
-              const SizedBox(height: 12),
-              const Text('Longitud', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
-              const SizedBox(height: 6),
-              TextField(controller: lonCtrl, keyboardType: const TextInputType.numberWithOptions(decimal: true)),
-              const SizedBox(height: 8),
-              const Text(
-                'La comuna se recalcula al guardar según las coordenadas.',
-                style: TextStyle(fontSize: 11, color: _textoGris),
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Cancelar')),
-          ElevatedButton(
-            onPressed: () async {
-              final nro = int.tryParse(nroCtrl.text.trim());
-              final lat = double.tryParse(latCtrl.text.trim().replaceAll(',', '.'));
-              final lon = double.tryParse(lonCtrl.text.trim().replaceAll(',', '.'));
-              if (calleCtrl.text.trim().isEmpty || nro == null || lat == null || lon == null) {
-                ScaffoldMessenger.of(dialogContext).showSnackBar(
-                  const SnackBar(content: Text('Completa calle, número y coordenadas válidas.')),
-                );
-                return;
-              }
-              try {
-                final ges = GestionResidenteService(Supabase.instance.client);
-                await ges.guardarUbicacionResidencia(
-                  idResidencia: dom.idResidencia,
-                  calle: calleCtrl.text.trim(),
-                  nroDireccion: nro,
-                  lat: lat,
-                  lon: lon,
-                );
-                await ges.guardarReferenciasRegistro(
-                  idRegistro: dom.idRegistro,
-                  unidad: unidadCtrl.text.trim().isEmpty ? null : unidadCtrl.text.trim(),
-                  descDeptoCond: descCtrl.text.trim().isEmpty ? null : descCtrl.text.trim(),
-                  notasV: dom.notasV,
-                );
-                if (!dialogContext.mounted) return;
-                Navigator.pop(dialogContext);
-                await _recargar();
-                if (!mounted) return;
-                _snack('Dirección guardada.');
-              } on RegistroResidenteException catch (e) {
-                if (!dialogContext.mounted) return;
-                ScaffoldMessenger.of(dialogContext).showSnackBar(SnackBar(content: Text(e.message)));
-              } catch (e) {
-                if (!dialogContext.mounted) return;
-                ScaffoldMessenger.of(dialogContext).showSnackBar(SnackBar(content: Text('$e')));
-              }
-            },
-            child: const Text('Guardar'),
-          ),
-        ],
-      ),
+    final guardado = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute<bool>(
+        builder: (_) => EditarDomicilioUbicacionScreen(domicilio: dom),
       ),
     );
+    if (guardado == true && mounted) {
+      await _recargar();
+      _snack('Dirección guardada.');
+    }
   }
 
   void _editarDetallesVivienda() {
@@ -357,6 +278,7 @@ class _GestionDomicilioScreenState extends State<GestionDomicilioScreen> {
     var tipo = dom.tipoVivienda;
     var estado = dom.estadoVivienda;
     var materialDept = _materialDepartamentoSeleccion;
+    final descCtrl = TextEditingController(text: dom.descDeptoCond ?? '');
 
     if (!_tiposViviendaCatalogo.contains(tipo) && _tiposViviendaCatalogo.isNotEmpty) {
       tipo = _tiposViviendaCatalogo.first;
@@ -370,7 +292,9 @@ class _GestionDomicilioScreenState extends State<GestionDomicilioScreen> {
 
     showDialog<void>(
       context: context,
-      builder: (dialogContext) => StatefulBuilder(
+      builder: (dialogContext) => StatefulDialogScope(
+        controllers: [descCtrl],
+        builder: (_) => StatefulBuilder(
         builder: (ctx, setD) {
           return AlertDialog(
             title: const Text('Detalles de la vivienda', style: TextStyle(fontWeight: FontWeight.w700)),
@@ -420,6 +344,21 @@ class _GestionDomicilioScreenState extends State<GestionDomicilioScreen> {
                       onChanged: (v) => setD(() => materialDept = v ?? materialDept),
                     ),
                   ],
+                  if (_esDeptoOCondominio(tipo)) ...[
+                    const SizedBox(height: 12),
+                    const Text(
+                      'Interior / referencia del departamento',
+                      style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                    ),
+                    const SizedBox(height: 6),
+                    TextField(
+                      controller: descCtrl,
+                      maxLength: 50,
+                      decoration: const InputDecoration(
+                        hintText: 'Ej: interior 12, torre B (máx. 50 caracteres)',
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -438,6 +377,17 @@ class _GestionDomicilioScreenState extends State<GestionDomicilioScreen> {
                     await ges.renovarPermanenciaMeses(idRegistro: dom.idRegistro, meses: meses);
                     await RecordatorioPermanenciaService(Supabase.instance.client)
                         .sincronizarTrasActualizarPermanencia(dom.idRegistro);
+                    final descTrim = descCtrl.text.trim();
+                    final descValor = _esDeptoOCondominio(tipo)
+                        ? (descTrim.isEmpty ? null : descTrim)
+                        : null;
+                    await ges.guardarReferenciasRegistro(
+                      idRegistro: dom.idRegistro,
+                      unidad: dom.unidad,
+                      descDeptoCond: descValor,
+                      notasV: dom.notasV,
+                    );
+
                     if (tipo == _tipoDepartamento) {
                       await ges.reemplazarPisos(
                         idRegistro: dom.idRegistro,
@@ -445,7 +395,7 @@ class _GestionDomicilioScreenState extends State<GestionDomicilioScreen> {
                           PisoDomicilioVista(numerop: 1, materialPiso: materialDept),
                         ],
                       );
-                    } else {
+                    } else if (tipo != _tipoCondominio) {
                       if (_pisosLocales.isEmpty) {
                         if (!dialogContext.mounted) return;
                         ScaffoldMessenger.of(dialogContext).showSnackBar(
@@ -476,6 +426,7 @@ class _GestionDomicilioScreenState extends State<GestionDomicilioScreen> {
             ],
           );
         },
+      ),
       ),
     );
   }
@@ -841,8 +792,6 @@ class _GestionDomicilioScreenState extends State<GestionDomicilioScreen> {
               ),
               const SizedBox(height: 10),
               Text(_lineaDireccion, style: const TextStyle(fontSize: 14, color: _textoPrincipal, height: 1.4)),
-              const SizedBox(height: 6),
-              Text(_interiorLinea, style: const TextStyle(fontSize: 13, color: _textoGris)),
               const SizedBox(height: 14),
               Container(
                 width: double.infinity,
@@ -900,6 +849,9 @@ class _GestionDomicilioScreenState extends State<GestionDomicilioScreen> {
                     _filaDetalle('Tiempo en la residencia:', _tiempoEtiqueta),
                     _filaDetalle('Tipo de vivienda:', dom.tipoVivienda),
                     _filaDetalle('Estado de la vivienda:', dom.estadoVivienda),
+                    if (dom.esDeptoOCondominio) ...[
+                      _filaDetalle('Interior / referencia:', _interiorLinea),
+                    ],
                     if (_esDepartamento) ...[
                       _filaDetalle('Material del departamento:', dom.materialDepartamentoSiAplica ?? '—'),
                       const SizedBox(height: 8),
