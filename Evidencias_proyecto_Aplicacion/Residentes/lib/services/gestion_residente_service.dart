@@ -110,6 +110,11 @@ class DomicilioVista {
 
   bool get esDepartamento => tipoVivienda.trim() == 'Departamento';
 
+  bool get esDeptoOCondominio {
+    final t = tipoVivienda.trim();
+    return t == 'Departamento' || t == 'Condominio';
+  }
+
   /// Material mostrado cuando es departamento (un solo piso en BD).
   String? get materialDepartamentoSiAplica {
     if (!esDepartamento || pisos.isEmpty) return null;
