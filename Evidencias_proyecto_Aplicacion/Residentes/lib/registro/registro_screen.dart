@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -101,15 +102,23 @@ class _RegistroScreenState extends State<RegistroScreen> {
           ),
           StepIndicator(currentStep: _currentStep),
           Expanded(
-            child: SingleChildScrollView(
-              padding: EdgeInsets.only(
-                bottom: _currentStep == 3 ? 32 : 24,
-              ),
-              child: ResponsiveContainer(
-                maxWidth: _currentStep == 3 ? 1240 : null,
-                child: _buildCurrentStep(),
-              ),
-            ),
+            child: _currentStep == 3 && !kIsWeb
+                ? Padding(
+                    padding: const EdgeInsets.only(bottom: 32),
+                    child: ResponsiveContainer(
+                      maxWidth: 1240,
+                      child: _buildCurrentStep(),
+                    ),
+                  )
+                : SingleChildScrollView(
+                    padding: EdgeInsets.only(
+                      bottom: _currentStep == 3 ? 32 : 24,
+                    ),
+                    child: ResponsiveContainer(
+                      maxWidth: _currentStep == 3 ? 1240 : null,
+                      child: _buildCurrentStep(),
+                    ),
+                  ),
           ),
         ],
       ),

@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -26,24 +27,42 @@ class EditarDomicilioUbicacionScreen extends StatelessWidget {
             onBack: () => Navigator.pop(context),
           ),
           Expanded(
-            child: SingleChildScrollView(
+            child: Padding(
               padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
               child: ResponsiveContainer(
-                child: UbicacionResidenciaForm(
-                  titulo: 'Ubicación del domicilio',
-                  etiquetaPrimaria: 'Guardar',
-                  etiquetaSecundaria: 'Cancelar',
-                  onSecundario: () => Navigator.pop(context),
-                  inicial: UbicacionResidenciaInicial(
-                    calle: domicilio.calle,
-                    nroDireccion: domicilio.nroDireccion,
-                    unidad: domicilio.unidad,
-                    lat: domicilio.lat,
-                    lon: domicilio.lon,
-                    direccionYaCargada: true,
-                  ),
-                  onConfirmar: (r) => _guardar(context, r),
-                ),
+                child: kIsWeb
+                    ? SingleChildScrollView(
+                        child: UbicacionResidenciaForm(
+                          titulo: 'Ubicación del domicilio',
+                          etiquetaPrimaria: 'Guardar',
+                          etiquetaSecundaria: 'Cancelar',
+                          onSecundario: () => Navigator.pop(context),
+                          inicial: UbicacionResidenciaInicial(
+                            calle: domicilio.calle,
+                            nroDireccion: domicilio.nroDireccion,
+                            unidad: domicilio.unidad,
+                            lat: domicilio.lat,
+                            lon: domicilio.lon,
+                            direccionYaCargada: true,
+                          ),
+                          onConfirmar: (r) => _guardar(context, r),
+                        ),
+                      )
+                    : UbicacionResidenciaForm(
+                        titulo: 'Ubicación del domicilio',
+                        etiquetaPrimaria: 'Guardar',
+                        etiquetaSecundaria: 'Cancelar',
+                        onSecundario: () => Navigator.pop(context),
+                        inicial: UbicacionResidenciaInicial(
+                          calle: domicilio.calle,
+                          nroDireccion: domicilio.nroDireccion,
+                          unidad: domicilio.unidad,
+                          lat: domicilio.lat,
+                          lon: domicilio.lon,
+                          direccionYaCargada: true,
+                        ),
+                        onConfirmar: (r) => _guardar(context, r),
+                      ),
               ),
             ),
           ),

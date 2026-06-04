@@ -1,6 +1,7 @@
 import 'dart:async';
 
-import 'package:flutter/foundation.dart' show defaultTargetPlatform, kIsWeb;
+import 'package:flutter/foundation.dart' show Factory, defaultTargetPlatform, kIsWeb;
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
@@ -535,9 +536,45 @@ class _UbicacionResidenciaFormState extends State<UbicacionResidenciaForm> {
     );
   }
 
+  /// En Android/iOS el mapa no debe ir dentro de un [SingleChildScrollView] (queda en gris).
+  bool _layoutMapaFueraDeScroll(bool mapaOk, bool dosColumnas) =>
+      mapaOk && !kIsWeb && !dosColumnas;
+
+  Set<Factory<OneSequenceGestureRecognizer>> get _gestosMapa => {
+        Factory<OneSequenceGestureRecognizer>(() => EagerGestureRecognizer()),
+      };
+
+  Widget _buildWidgetMapa(double alturaMapa) {
+    return SizedBox(
+      height: alturaMapa,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(12),
+        child: GoogleMap(
+          initialCameraPosition: CameraPosition(target: _cameraTarget, zoom: 15),
+          markers: _markers,
+          myLocationButtonEnabled: false,
+          zoomControlsEnabled: true,
+          mapType: MapType.normal,
+          gestureRecognizers: _gestosMapa,
+          onMapCreated: (c) {
+            _mapController = c;
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (mounted) {
+                _mapListoParaDispose = true;
+                c.animateCamera(CameraUpdate.newLatLngZoom(_cameraTarget, 15));
+              }
+            });
+          },
+          onTap: _onMapTap,
+        ),
+      ),
+    );
+  }
+
   Widget _buildColumnaMapaYExtras({
     required double alturaMapa,
     required ButtonStyle botonCoordStyle,
+    bool incluirMapa = true,
   }) {
     final tituloMapa = MediaQuery.sizeOf(context).width >= 900 ? 15.0 : 14.0;
 
@@ -554,28 +591,9 @@ class _UbicacionResidenciaFormState extends State<UbicacionResidenciaForm> {
           style: TextStyle(fontSize: 12, color: Colors.grey.shade700, height: 1.35),
         ),
         const SizedBox(height: 10),
-        if (_mapaGoogleDisponible())
-          SizedBox(
-            height: alturaMapa,
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(12),
-              child: GoogleMap(
-                initialCameraPosition: CameraPosition(target: _cameraTarget, zoom: 15),
-                markers: _markers,
-                myLocationButtonEnabled: false,
-                zoomControlsEnabled: true,
-                mapType: MapType.normal,
-                onMapCreated: (c) {
-                  _mapController = c;
-                  WidgetsBinding.instance.addPostFrameCallback((_) {
-                    if (mounted) _mapListoParaDispose = true;
-                  });
-                },
-                onTap: _onMapTap,
-              ),
-            ),
-          )
-        else
+        if (_mapaGoogleDisponible() && incluirMapa)
+          _buildWidgetMapa(alturaMapa)
+        else if (!_mapaGoogleDisponible())
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
@@ -834,6 +852,31 @@ class _UbicacionResidenciaFormState extends State<UbicacionResidenciaForm> {
                 ],
               ),
               const SizedBox(height: 28),
+              botones,
+            ],
+          );
+        }
+
+        final mapaFueraScroll = _layoutMapaFueraDeScroll(mapaOk, dosColumnas);
+        if (mapaFueraScroll) {
+          final detallesMapa = _buildColumnaMapaYExtras(
+            alturaMapa: alturaMapa,
+            botonCoordStyle: botonCoordStyle,
+            incluirMapa: false,
+          );
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Expanded(
+                child: SingleChildScrollView(
+                  child: columnaIzquierda,
+                ),
+              ),
+              const SizedBox(height: 12),
+              _buildWidgetMapa(alturaMapa),
+              const SizedBox(height: 12),
+              detallesMapa,
+              const SizedBox(height: 16),
               botones,
             ],
           );
