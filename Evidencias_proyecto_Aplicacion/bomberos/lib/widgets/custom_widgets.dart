@@ -52,6 +52,8 @@ class CustomAppBar extends StatelessWidget {
     this.showBack = true,
     this.onBack,
     this.trailing,
+    this.leadingIcon = Icons.local_fire_department_outlined,
+    this.showLeadingIconWhenNoBack = false,
   });
 
   final String title;
@@ -59,6 +61,8 @@ class CustomAppBar extends StatelessWidget {
   final bool showBack;
   final VoidCallback? onBack;
   final Widget? trailing;
+  final IconData leadingIcon;
+  final bool showLeadingIconWhenNoBack;
 
   @override
   Widget build(BuildContext context) {
@@ -82,9 +86,11 @@ class CustomAppBar extends StatelessWidget {
                   icon: const Icon(Icons.arrow_back, color: Colors.white),
                   onPressed: onBack ?? () => Navigator.pop(context),
                 )
+              else if (showLeadingIconWhenNoBack)
+                const SizedBox(width: 8)
               else
                 const SizedBox(width: 48),
-              const Icon(Icons.local_fire_department_outlined, color: Colors.white, size: 28),
+              Icon(leadingIcon, color: Colors.white, size: 28),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
