@@ -1,6 +1,7 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../models/residencia_busqueda.dart';
+import '../utils/supabase_parse.dart';
 
 class BusquedaResidenciaException implements Exception {
   BusquedaResidenciaException(this.message);
@@ -34,7 +35,7 @@ class BusquedaResidenciaService {
       var query = _client
           .from('registro_v')
           .select(
-            'id_registro, unidad, desc_depto_cond, fecha_ult_confirm, id_grupof, '
+            'id_registro, id_residencia, unidad, desc_depto_cond, fecha_ult_confirm, id_grupof, '
             'residencia(id_residencia, calle, nro_direccion, cut_com)',
           )
           .eq('vigente', true)
@@ -50,34 +51,42 @@ class BusquedaResidenciaService {
 
       final cuts = <int>{};
       for (final rv in filas) {
-        final res = rv['residencia'];
-        if (res is Map<String, dynamic>) {
-          cuts.add((res['cut_com'] as num).toInt());
-        }
+        final res = SupabaseParse.asMap(rv['residencia']);
+        final cut = SupabaseParse.asInt(res?['cut_com']);
+        if (cut != null) cuts.add(cut);
       }
 
       final comunasPorCut = await _mapaComunas(cuts);
-      final grupos = filas.map((r) => (r['id_grupof'] as num).toInt()).toSet().toList();
+      final grupos = filas
+          .map((r) => SupabaseParse.asInt(r['id_grupof']))
+          .whereType<int>()
+          .toSet()
+          .toList();
       final personasPorGrupo = await _conteoIntegrantes(grupos);
       final mascotasPorGrupo = await _conteoMascotas(grupos);
 
       final resultados = <ResidenciaBusquedaResultado>[];
       for (final rv in filas) {
-        final res = rv['residencia'];
-        if (res is! Map<String, dynamic>) continue;
+        final res = SupabaseParse.asMap(rv['residencia']);
+        if (res == null) continue;
 
-        final idRes = (res['id_residencia'] as num).toInt();
-        final cut = (res['cut_com'] as num).toInt();
+        final idReg = SupabaseParse.asInt(rv['id_registro']);
+        final idRes = SupabaseParse.asInt(rv['id_residencia']) ?? SupabaseParse.asInt(res['id_residencia']);
+        final idGf = SupabaseParse.asInt(rv['id_grupof']);
+        final cut = SupabaseParse.asInt(res['cut_com']);
+        final calle = SupabaseParse.asString(res['calle']);
+        final nro = SupabaseParse.asInt(res['nro_direccion']);
+        if (idReg == null || idRes == null || idGf == null || cut == null || calle == null || nro == null) {
+          continue;
+        }
+
         final comuna = comunasPorCut[cut] ?? 'Comuna $cut';
-        final calle = (res['calle'] as String).trim();
-        final nro = (res['nro_direccion'] as num).toInt();
-        final unidad = (rv['unidad'] as String?)?.trim();
-        final descDepto = (rv['desc_depto_cond'] as String?)?.trim();
-        final idGf = (rv['id_grupof'] as num).toInt();
+        final unidad = SupabaseParse.asString(rv['unidad']);
+        final descDepto = SupabaseParse.asString(rv['desc_depto_cond']);
 
         resultados.add(
           ResidenciaBusquedaResultado(
-            idRegistro: (rv['id_registro'] as num).toInt(),
+            idRegistro: idReg,
             idResidencia: idRes,
             idGrupof: idGf,
             direccionCompleta: _formatearDireccion(
@@ -94,6 +103,8 @@ class BusquedaResidenciaService {
         );
       }
       return resultados;
+    } on FormatException catch (e) {
+      throw BusquedaResidenciaException(e.message);
     } on PostgrestException catch (e) {
       throw BusquedaResidenciaException(e.message);
     }
@@ -104,7 +115,9 @@ class BusquedaResidenciaService {
     final raw = await _client.from('comunas').select('cut_com, comuna').inFilter('cut_com', cuts.toList());
     final map = <int, String>{};
     for (final row in List<Map<String, dynamic>>.from(raw as List)) {
-      map[(row['cut_com'] as num).toInt()] = (row['comuna'] as String).trim();
+      final cut = SupabaseParse.asInt(row['cut_com']);
+      final nombre = SupabaseParse.asString(row['comuna']);
+      if (cut != null && nombre != null) map[cut] = nombre;
     }
     return map;
   }
@@ -118,7 +131,8 @@ class BusquedaResidenciaService {
         .isFilter('fecha_fin_i', null);
     final map = <int, int>{};
     for (final row in List<Map<String, dynamic>>.from(raw as List)) {
-      final id = (row['id_grupof'] as num).toInt();
+      final id = SupabaseParse.asInt(row['id_grupof']);
+      if (id == null) continue;
       map[id] = (map[id] ?? 0) + 1;
     }
     return map;
@@ -129,7 +143,8 @@ class BusquedaResidenciaService {
     final raw = await _client.from('mascota').select('id_grupof').inFilter('id_grupof', idGrupos);
     final map = <int, int>{};
     for (final row in List<Map<String, dynamic>>.from(raw as List)) {
-      final id = (row['id_grupof'] as num).toInt();
+      final id = SupabaseParse.asInt(row['id_grupof']);
+      if (id == null) continue;
       map[id] = (map[id] ?? 0) + 1;
     }
     return map;
