@@ -6,6 +6,8 @@ import '../models/bombero_perfil.dart';
 import '../models/residencia_busqueda.dart';
 import '../services/busqueda_residencia_service.dart';
 import '../widgets/custom_widgets.dart';
+import 'detalle_residencia_screen.dart';
+import 'mapa_residencias_screen.dart';
 
 /// Inicio: búsqueda de residencias con registro vigente (modo emergencia).
 class HomeBomberoScreen extends StatefulWidget {
@@ -258,7 +260,14 @@ class _HomeBomberoScreenState extends State<HomeBomberoScreen> {
             color: const Color(0xFF2E7D32),
             icon: Icons.location_on_outlined,
             label: 'Ver Mapa de Residencias',
-            onPressed: () => _snack('Mapa de residencias — próximamente.'),
+            onPressed: () {
+              Navigator.push<void>(
+                context,
+                MaterialPageRoute<void>(
+                  builder: (_) => MapaResidenciasScreen(perfil: widget.perfil),
+                ),
+              );
+            },
           ),
           const SizedBox(height: 10),
           _botonSecundario(
@@ -323,7 +332,17 @@ class _HomeBomberoScreenState extends State<HomeBomberoScreen> {
           Align(
             alignment: Alignment.centerRight,
             child: ElevatedButton(
-              onPressed: () => _snack('Detalle del domicilio #${r.idRegistro} — próximamente.'),
+              onPressed: () {
+                Navigator.push<void>(
+                  context,
+                  MaterialPageRoute<void>(
+                    builder: (_) => DetalleResidenciaScreen(
+                      idRegistro: r.idRegistro,
+                      perfil: widget.perfil,
+                    ),
+                  ),
+                );
+              },
               style: ElevatedButton.styleFrom(
                 minimumSize: const Size(0, 40),
                 padding: const EdgeInsets.symmetric(horizontal: 20),

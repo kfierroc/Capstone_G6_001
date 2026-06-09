@@ -26,6 +26,10 @@
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Se usa tu ubicación para centrar el mapa de residencias en emergencias.</string>
+	<key>GMSApiKey</key>
+	<string>COLOCA_LA_MISMA_KEY_QUE_GOOGLE_MAPS_API_KEY_EN_ENV</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

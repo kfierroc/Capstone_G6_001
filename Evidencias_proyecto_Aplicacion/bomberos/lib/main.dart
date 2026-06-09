@@ -2,11 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import 'config/maps_loader.dart';
 import 'login/login_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await dotenv.load(fileName: '.env');
+  try {
+    await loadGoogleMapsScript(dotenv.env['GOOGLE_MAPS_API_KEY'] ?? '');
+  } catch (e, st) {
+    debugPrint('No se pudo precargar Google Maps: $e\n$st');
+  }
   final url = dotenv.env['SUPABASE_URL']?.trim();
   final anonKey = dotenv.env['SUPABASE_ANON_KEY']?.trim();
   if (url == null || url.isEmpty || anonKey == null || anonKey.isEmpty) {
