@@ -1,0 +1,352 @@
+import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+
+import '../../models/bombero_perfil.dart';
+import '../../models/grifo_mapa.dart';
+import '../../services/catalogos_bombero_service.dart';
+import '../../services/compania_bombero_service.dart';
+import '../../services/mapa_grifo_service.dart';
+import '../../widgets/custom_widgets.dart';
+import 'grifos_resultados_widgets.dart';
+
+/// Pestaña lista: búsqueda por ID (región/comuna) y filtros sobre resultados cargados.
+class GrifosListaTab extends StatefulWidget {
+  const GrifosListaTab({
+    super.key,
+    required this.resultados,
+    required this.onResultados,
+    this.perfil,
+    this.onEditar,
+  });
+
+  final List<GrifoMapaResultado> resultados;
+  final ValueChanged<List<GrifoMapaResultado>> onResultados;
+  final BomberoPerfil? perfil;
+  final Future<void> Function(GrifoMapaResultado)? onEditar;
+
+  @override
+  State<GrifosListaTab> createState() => _GrifosListaTabState();
+}
+
+class _GrifosListaTabState extends State<GrifosListaTab> {
+  static const _azul = Color(0xFF1565C0);
+
+  late final MapaGrifoService _svc;
+  final _buscarIdCtrl = TextEditingController();
+
+  List<({int cutReg, String nombre})> _regiones = [];
+  List<({int cutCom, String nombre})> _comunas = [];
+  int? _cutRegSeleccionada;
+  int? _cutComSeleccionada;
+  bool _busquedaLibre = false;
+  bool _cargandoFiltros = true;
+  bool _cargandoComunas = false;
+  bool _buscandoId = false;
+
+  GrifoFiltroEstado _filtroEstado = GrifoFiltroEstado.todos;
+
+  @override
+  void initState() {
+    super.initState();
+    _svc = MapaGrifoService(Supabase.instance.client);
+    _cargarFiltrosUbicacion();
+  }
+
+  @override
+  void dispose() {
+    _buscarIdCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _cargarFiltrosUbicacion() async {
+    final client = Supabase.instance.client;
+    final catalogos = CatalogosBomberoService(client);
+    setState(() => _cargandoFiltros = true);
+    try {
+      final regiones = await catalogos.regiones();
+      int? cutReg;
+      int? cutCom;
+      List<({int cutCom, String nombre})> comunas = [];
+
+      final idCompania = widget.perfil?.idCompania;
+      if (idCompania != null) {
+        final ubicacion = await CompaniaBomberoService(client).obtenerUbicacionPorIdCompania(idCompania);
+        if (ubicacion != null) {
+          cutReg = ubicacion.cutReg;
+          cutCom = ubicacion.cutCom;
+          comunas = await catalogos.comunasPorRegion(cutReg);
+        }
+      }
+
+      if (!mounted) return;
+      setState(() {
+        _regiones = regiones;
+        _cutRegSeleccionada = cutReg;
+        _comunas = comunas;
+        _cutComSeleccionada = cutCom;
+        _cargandoFiltros = false;
+      });
+    } catch (_) {
+      if (mounted) setState(() => _cargandoFiltros = false);
+    }
+  }
+
+  Future<void> _onRegionChanged(int? cutReg) async {
+    setState(() {
+      _cutRegSeleccionada = cutReg;
+      _cutComSeleccionada = null;
+      _comunas = [];
+    });
+    if (cutReg == null) return;
+
+    setState(() => _cargandoComunas = true);
+    try {
+      final list = await CatalogosBomberoService(Supabase.instance.client).comunasPorRegion(cutReg);
+      if (!mounted) return;
+      setState(() {
+        _comunas = list;
+        _cargandoComunas = false;
+      });
+    } catch (_) {
+      if (mounted) {
+        setState(() => _cargandoComunas = false);
+        _snack('No se pudieron cargar las comunas.');
+      }
+    }
+  }
+
+  bool get _filtroUbicacionCompleto => _cutRegSeleccionada != null && _cutComSeleccionada != null;
+
+  bool get _puedeBuscarId => _busquedaLibre || _filtroUbicacionCompleto;
+
+  void _alternarBusquedaLibre() {
+    setState(() => _busquedaLibre = !_busquedaLibre);
+  }
+
+  Future<void> _buscarPorId() async {
+    final idTxt = _buscarIdCtrl.text.trim().replaceAll('#', '');
+    final id = int.tryParse(idTxt);
+    if (id == null) {
+      _snack('Ingresa un ID de grifo válido.');
+      return;
+    }
+    if (!_busquedaLibre) {
+      if (_cutRegSeleccionada == null) {
+        _snack('Selecciona una región.');
+        return;
+      }
+      if (_cutComSeleccionada == null) {
+        _snack('Selecciona una comuna.');
+        return;
+      }
+    }
+
+    setState(() => _buscandoId = true);
+    try {
+      final grifo = await _svc.buscarPorId(
+        idGrifo: id,
+        cutCom: _busquedaLibre ? null : _cutComSeleccionada,
+      );
+      if (!mounted) return;
+
+      if (grifo == null) {
+        widget.onResultados([]);
+        _snack(_busquedaLibre
+            ? 'No se encontró el grifo #$id.'
+            : 'No se encontró el grifo #$id en la comuna seleccionada.');
+      } else {
+        widget.onResultados([grifo]);
+      }
+    } on MapaGrifoException catch (e) {
+      if (mounted) _snack(e.message);
+    } catch (e) {
+      if (mounted) _snack('Error: $e');
+    } finally {
+      if (mounted) setState(() => _buscandoId = false);
+    }
+  }
+
+  void _snack(String m) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(m)));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return CustomScrollView(
+      slivers: [
+        SliverToBoxAdapter(
+          child: AppWidthContainer(
+            padding: const EdgeInsets.only(top: 12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _seccionTitulo(
+                  icon: Icons.filter_list,
+                  titulo: 'Buscar grifo por ID',
+                  subtitulo: 'Región y comuna filtran la búsqueda por ID. El mapa no usa este filtro.',
+                ),
+                const SizedBox(height: 10),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: _buscandoId ? null : _alternarBusquedaLibre,
+                    icon: Icon(
+                      _busquedaLibre ? Icons.travel_explore : Icons.travel_explore_outlined,
+                      size: 20,
+                      color: _busquedaLibre ? _azul : Colors.grey.shade700,
+                    ),
+                    label: Text(
+                      _busquedaLibre ? 'Búsqueda libre activa' : 'Activar búsqueda libre',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        color: _busquedaLibre ? _azul : Colors.grey.shade800,
+                      ),
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      side: BorderSide(color: _busquedaLibre ? _azul : Colors.grey.shade400),
+                      backgroundColor: _busquedaLibre ? const Color(0xFFE3F2FD) : Colors.white,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    ),
+                  ),
+                ),
+                if (!_busquedaLibre) ...[
+                  const SizedBox(height: 12),
+                  _labelObligatorio('Región'),
+                  const SizedBox(height: 6),
+                  _cargandoFiltros && _regiones.isEmpty
+                      ? const LinearProgressIndicator(minHeight: 2)
+                      : _dropdownReg(
+                          valor: _cutRegSeleccionada,
+                          hint: 'Selecciona una región',
+                          items: _regiones.map((r) => (r.cutReg, r.nombre)).toList(),
+                          onChanged: _buscandoId ? null : _onRegionChanged,
+                        ),
+                  const SizedBox(height: 12),
+                  _labelObligatorio('Comuna'),
+                  const SizedBox(height: 6),
+                  if (_cargandoComunas)
+                    const LinearProgressIndicator(minHeight: 2)
+                  else
+                    _dropdownReg(
+                      valor: _cutComSeleccionada,
+                      hint: _cutRegSeleccionada == null
+                          ? 'Primero selecciona una región'
+                          : 'Selecciona una comuna',
+                      items: _comunas.map((c) => (c.cutCom, c.nombre)).toList(),
+                      onChanged: (_buscandoId || _cutRegSeleccionada == null)
+                          ? null
+                          : (v) => setState(() => _cutComSeleccionada = v),
+                    ),
+                ],
+                const SizedBox(height: 14),
+                TextField(
+                  controller: _buscarIdCtrl,
+                  keyboardType: TextInputType.number,
+                  decoration: InputDecoration(
+                    hintText: 'Buscar por ID de grifo...',
+                    filled: true,
+                    fillColor: Colors.white,
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      borderSide: BorderSide(color: Colors.grey.shade300),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                FilledButton.icon(
+                  onPressed: (_buscandoId || !_puedeBuscarId) ? null : _buscarPorId,
+                  icon: _buscandoId
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                        )
+                      : const Icon(Icons.search, size: 20),
+                  label: Text(_buscandoId ? 'Buscando…' : 'Buscar por ID'),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: _azul,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                GrifosPanelResultados(
+                  resultados: widget.resultados,
+                  filtro: _filtroEstado,
+                  onFiltroChanged: (f) => setState(() => _filtroEstado = f),
+                  onEditar: widget.onEditar,
+                ),
+                const SizedBox(height: 24),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _seccionTitulo({required IconData icon, required String titulo, String? subtitulo}) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(icon, color: _azul, size: 22),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(titulo, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700)),
+            ),
+          ],
+        ),
+        if (subtitulo != null) ...[
+          const SizedBox(height: 4),
+          Text(subtitulo, style: TextStyle(fontSize: 12, color: Colors.grey.shade700, height: 1.3)),
+        ],
+      ],
+    );
+  }
+
+  Widget _labelObligatorio(String texto) {
+    return Row(
+      children: [
+        Text(texto, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.grey.shade800)),
+        const Text(' *', style: TextStyle(color: _azul, fontWeight: FontWeight.w700)),
+      ],
+    );
+  }
+
+  Widget _dropdownReg({
+    required int? valor,
+    required String hint,
+    required List<(int, String)> items,
+    required ValueChanged<int?>? onChanged,
+  }) {
+    return DropdownButtonFormField<int>(
+      key: ValueKey('$hint-$valor'),
+      initialValue: valor,
+      isExpanded: true,
+      decoration: InputDecoration(
+        filled: true,
+        fillColor: Colors.white,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: BorderSide(color: Colors.grey.shade300),
+        ),
+      ),
+      hint: Text(hint, style: const TextStyle(fontSize: 13)),
+      items: items
+          .map(
+            (e) => DropdownMenuItem(
+              value: e.$1,
+              child: Text(e.$2, overflow: TextOverflow.ellipsis),
+            ),
+          )
+          .toList(),
+      onChanged: onChanged,
+    );
+  }
+
+}
