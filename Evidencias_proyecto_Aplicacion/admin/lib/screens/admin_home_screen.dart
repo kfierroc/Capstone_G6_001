@@ -5,7 +5,9 @@ import '../models/admin_bombero_perfil.dart';
 import '../models/dashboard_stats.dart';
 import '../theme/admin_theme.dart';
 import '../widgets/admin_sidebar.dart';
+import 'bomberos/bomberos_list_screen.dart';
 import 'dashboard_screen.dart';
+import 'grupo_familiar/grupo_familiar_list_screen.dart';
 import 'login_screen.dart';
 import 'placeholder_section_screen.dart';
 
@@ -57,16 +59,8 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
           description: 'Gestión de residencias registradas.\nPróximamente disponible.',
           alertCount: _alertCount,
         ),
-      AdminSection.grupoFamiliar => PlaceholderSectionScreen(
-          title: 'Grupo Familiar',
-          description: 'Listado y detalle de grupos familiares.\nPróximamente disponible.',
-          alertCount: _alertCount,
-        ),
-      AdminSection.bomberos => PlaceholderSectionScreen(
-          title: 'Bomberos',
-          description: 'Administración de bomberos y compañías.\nPróximamente disponible.',
-          alertCount: _alertCount,
-        ),
+      AdminSection.grupoFamiliar => GrupoFamiliarSection(alertCount: _alertCount),
+      AdminSection.bomberos => BomberosListScreen(alertCount: _alertCount),
       AdminSection.grifos => PlaceholderSectionScreen(
           title: 'Grifos',
           description: 'Registro y estado de grifos.\nPróximamente disponible.',
