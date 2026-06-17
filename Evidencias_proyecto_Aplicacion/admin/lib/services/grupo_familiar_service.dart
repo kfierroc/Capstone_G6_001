@@ -60,7 +60,7 @@ class GrupoFamiliarService {
             'id_registro, vigente, unidad, desc_depto_cond, notas_v, '
             'fecha_ini_r, fecha_ult_confirm, fecha_expiracion, '
             'id_tipo_v, id_estado_v, '
-            'residencia(calle, nro_direccion, lat, lon, cut_com)'
+            'residencia(id_residencia, calle, nro_direccion, lat, lon, cut_com)'
             ')',
           )
           .eq('id_grupof', idGrupof)
@@ -80,17 +80,20 @@ class GrupoFamiliarService {
       final materiales = idRegistro != null ? await _cargarMateriales(idRegistro) : <MaterialPeligrosoGrupo>[];
 
       final titularIntegrante = integrantes.where((i) => i.esTitular);
-      final titular = titularIntegrante.isEmpty ? 'Titular del grupo' : titularIntegrante.first.etiqueta;
-      final edadTitular = titularIntegrante.isEmpty ? null : titularIntegrante.first.edad;
+      final titularRow = titularIntegrante.isEmpty ? null : titularIntegrante.first;
+      final titular = titularRow?.etiqueta ?? 'Titular del grupo';
 
       final domicilio = await _cargarDomicilio(registroVigente);
       final cuenta = CuentaGrupoInfo(
+        idGrupof: idGrupof,
+        idIntegranteTitular: titularRow?.idIntegrante,
         rutFormateado: rut,
         telefono: telefono.isEmpty ? '—' : telefono,
         fechaCreacion: _formatearFecha(gf['fecha_creacion']),
         cuentaVinculada: gf['user_id'] != null,
         email: await _obtenerEmail(gf['user_id'] as String?),
-        edadTitular: edadTitular,
+        edadTitular: titularRow?.edad,
+        anioNacTitular: titularRow?.anioNac,
       );
 
       return GrupoFamiliarDetalle(
@@ -121,6 +124,13 @@ class GrupoFamiliarService {
     }
   }
 
+  Future<DomicilioGrupoInfo> cargarDomicilioDesdeRegistro(
+    Map<String, dynamic> registro, {
+    required Map<String, dynamic> residencia,
+  }) async {
+    return _cargarDomicilio({...registro, 'residencia': residencia});
+  }
+
   Future<DomicilioGrupoInfo> _cargarDomicilio(Map<String, dynamic>? rv) async {
     if (rv == null) return DomicilioGrupoInfo.sinRegistro;
 
@@ -145,14 +155,16 @@ class GrupoFamiliarService {
     final unidad = (rv['unidad'] as String?)?.trim();
     final descDepto = (rv['desc_depto_cond'] as String?)?.trim();
     final idRegistro = _asInt(rv['id_registro']);
+    final idResidencia = _asInt(res['id_residencia']);
 
     final idTipo = _asInt(rv['id_tipo_v']);
     final idEst = _asInt(rv['id_estado_v']);
     final tipoV = idTipo != null ? await _etiquetaCatalogo('tipo_vivienda', 'id_tipo_v', idTipo, 'tipo_v') : '—';
     final estadoV = idEst != null ? await _etiquetaCatalogo('estado_vivienda', 'id_estado_v', idEst, 'estado_v') : '—';
 
-    final materialResidencia = idRegistro != null ? await _materialesResidencia(idRegistro) : null;
-    final esDeptoOCondominio = _esDeptoOCondominio(tipoV);
+    final materialData = idRegistro != null ? await _materialesResidenciaData(idRegistro) : (null, null);
+    final materialResidencia = materialData.$1;
+    final idMatPiso = materialData.$2;
 
     final partes = <String>['$calle $nro'];
     if (unidad != null && unidad.isNotEmpty) {
@@ -173,9 +185,17 @@ class GrupoFamiliarService {
       fechaInicio: _formatearFecha(rv['fecha_ini_r']),
       fechaUltConfirm: _formatearFecha(rv['fecha_ult_confirm']),
       fechaExpiracion: _formatearFecha(rv['fecha_expiracion']),
+      idRegistro: idRegistro,
+      idResidencia: idResidencia,
+      idTipoV: idTipo,
+      idEstadoV: idEst,
+      cutCom: cut,
       unidad: unidad?.isNotEmpty == true ? unidad : null,
       materialResidencia: materialResidencia?.isNotEmpty == true ? materialResidencia : null,
-      descDeptoCond: esDeptoOCondominio && descDepto != null && descDepto.isNotEmpty ? descDepto : null,
+      idMatPiso: idMatPiso,
+      descDeptoCond: _esDeptoOCondominio(tipoV) && descDepto != null && descDepto.isNotEmpty ? descDepto : null,
+      calle: calle,
+      nroDireccion: nro,
       notas: (rv['notas_v'] as String?)?.trim(),
       lat: lat,
       lon: lon,
@@ -191,19 +211,22 @@ class GrupoFamiliarService {
     }
   }
 
-  Future<String?> _materialesResidencia(int idRegistro) async {
+  Future<(String?, int?)> _materialesResidenciaData(int idRegistro) async {
     try {
       final raw = await _client
           .from('piso_v')
-          .select('numerop, tipo_mat_piso(material_piso)')
+          .select('numerop, id_mat_piso, tipo_mat_piso(material_piso)')
           .eq('id_registro', idRegistro)
           .order('numerop');
 
-      if (raw.isEmpty) return null;
+      if (raw.isEmpty) return (null, null);
 
       final partes = <String>[];
+      int? firstMatId;
       for (final row in raw) {
         final material = _nestedString(row['tipo_mat_piso'], 'material_piso');
+        final idMat = _asInt(row['id_mat_piso']);
+        firstMatId ??= idMat;
         if (material == null || material.isEmpty) continue;
         final piso = _asInt(row['numerop']);
         if (piso != null && raw.length > 1) {
@@ -212,9 +235,9 @@ class GrupoFamiliarService {
           partes.add(material);
         }
       }
-      return partes.isEmpty ? null : partes.join(' · ');
+      return (partes.isEmpty ? null : partes.join(' · '), firstMatId);
     } catch (_) {
-      return null;
+      return (null, null);
     }
   }
 
@@ -244,7 +267,7 @@ class GrupoFamiliarService {
     if (raw.isEmpty) return [];
 
     final ids = raw.map((r) => _asInt(r['id_integrante'])!).toList();
-    final condPorInt = await _condicionesPorIntegrante(ids);
+    final condData = await _condicionesPorIntegrante(ids);
     final anioActual = DateTime.now().year;
     var nNoTitular = 0;
 
@@ -265,35 +288,46 @@ class GrupoFamiliarService {
       return IntegranteGrupo(
         idIntegrante: idI,
         etiqueta: etiqueta,
+        anioNac: anio,
         edad: edad,
         esTitular: titular,
         rutMostrar: titular ? RutUtils.formatear(rutNum, dv) : null,
-        condiciones: condPorInt[idI] ?? const [],
+        condiciones: condData.textos[idI] ?? const [],
+        idsCondiciones: condData.ids[idI] ?? const [],
       );
     }).toList();
   }
 
-  Future<Map<int, List<String>>> _condicionesPorIntegrante(List<int> ids) async {
-    if (ids.isEmpty) return {};
+  Future<({Map<int, List<int>> ids, Map<int, List<String>> textos})> _condicionesPorIntegrante(
+    List<int> ids,
+  ) async {
+    if (ids.isEmpty) {
+      return (ids: <int, List<int>>{}, textos: <int, List<String>>{});
+    }
     final raw = await _client
         .from('condiciones_integ')
-        .select('id_integrante, observacion, condiciones(tipo_condicion)')
+        .select('id_integrante, id_condicion, observacion, condiciones(tipo_condicion)')
         .inFilter('id_integrante', ids);
 
-    final out = <int, List<String>>{};
+    final idsMap = <int, List<int>>{};
+    final textosMap = <int, List<String>>{};
     for (final row in raw) {
       final idI = _asInt(row['id_integrante']);
+      final idCond = _asInt(row['id_condicion']);
       if (idI == null) continue;
+      if (idCond != null) {
+        idsMap.putIfAbsent(idI, () => []).add(idCond);
+      }
       var texto = _nestedString(row['condiciones'], 'tipo_condicion') ?? '';
       final obs = row['observacion'] as String?;
       if (obs != null && obs.isNotEmpty) {
         texto = texto.isEmpty ? obs : '$texto - $obs';
       }
       if (texto.isNotEmpty) {
-        out.putIfAbsent(idI, () => []).add(texto);
+        textosMap.putIfAbsent(idI, () => []).add(texto);
       }
     }
-    return out;
+    return (ids: idsMap, textos: textosMap);
   }
 
   Future<List<MascotaGrupo>> _cargarMascotas(int idGrupof) async {
@@ -315,6 +349,8 @@ class GrupoFamiliarService {
         nombre: (r['nombre_m'] as String? ?? 'Sin nombre').trim(),
         especie: idE != null ? (especies[idE] ?? '—') : '—',
         tamanio: idT != null ? (tamanios[idT] ?? '—') : '—',
+        idEspecie: idE ?? 0,
+        idTamanio: idT ?? 0,
       );
     }).toList();
   }
@@ -322,13 +358,14 @@ class GrupoFamiliarService {
   Future<List<MaterialPeligrosoGrupo>> _cargarMateriales(int idRegistro) async {
     final raw = await _client
         .from('mat_peligroso')
-        .select('cantidad, tipo_mat_peligroso(tipo_mat)')
+        .select('cantidad, id_mat_pelig, tipo_mat_peligroso(tipo_mat)')
         .eq('id_registro', idRegistro);
 
     return raw.map((r) {
+      final idMat = _asInt(r['id_mat_pelig']) ?? 0;
       final tipo = _nestedString(r['tipo_mat_peligroso'], 'tipo_mat') ?? 'Material';
       final cant = _asInt(r['cantidad']) ?? 0;
-      return MaterialPeligrosoGrupo(tipo: tipo, cantidad: cant);
+      return MaterialPeligrosoGrupo(idMatPelig: idMat, tipo: tipo, cantidad: cant);
     }).toList();
   }
 

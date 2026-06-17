@@ -14,7 +14,7 @@ class BomberosAdminService {
           .from('bombero')
           .select(
             'rut_num, rut_dv, nomb_bombero, ape_p_bombero, is_admin, user_id, '
-            'companias_bomberos(nombre, cut_com, comunas(comuna))',
+            'companias_bomberos(nombre, id_compania, cut_com, comunas(comuna))',
           )
           .order('ape_p_bombero')
           .order('nomb_bombero');
@@ -31,7 +31,7 @@ class BomberosAdminService {
           .from('bombero')
           .select(
             'rut_num, rut_dv, nomb_bombero, ape_p_bombero, is_admin, user_id, '
-            'companias_bomberos(nombre, cut_com)',
+            'companias_bomberos(nombre, id_compania, cut_com)',
           )
           .order('ape_p_bombero')
           .order('nomb_bombero');
@@ -52,8 +52,11 @@ class BomberosAdminService {
         return BomberoListItem(
           rutNum: item.rutNum,
           rutFormateado: item.rutFormateado,
+          nombBombero: item.nombBombero,
+          apePBombero: item.apePBombero,
           nombreCompleto: item.nombreCompleto,
           compania: item.compania,
+          idCompania: item.idCompania,
           comuna: comunas[cut] ?? item.comuna,
           esAdmin: item.esAdmin,
           tieneCuenta: item.tieneCuenta,
@@ -76,6 +79,7 @@ class BomberosAdminService {
     final ape = (m['ape_p_bombero'] as String? ?? '').trim();
     final companiaData = _nestedMap(m['companias_bomberos']);
     final compania = (companiaData?['nombre'] as String? ?? '—').trim();
+    final idCompania = _asInt(companiaData?['id_compania']);
 
     var comuna = '—';
     final comunasNested = _nestedMap(companiaData?['comunas']);
@@ -86,8 +90,11 @@ class BomberosAdminService {
     return BomberoListItem(
       rutNum: rutNum,
       rutFormateado: RutUtils.formatear(rutNum, dv),
+      nombBombero: nomb,
+      apePBombero: ape,
       nombreCompleto: '$nomb $ape'.trim(),
       compania: compania.isEmpty ? '—' : compania,
+      idCompania: idCompania,
       comuna: comuna.isEmpty ? '—' : comuna,
       esAdmin: m['is_admin'] == true,
       tieneCuenta: m['user_id'] != null,

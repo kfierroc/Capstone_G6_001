@@ -1,107 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import '../../models/grupo_familiar_list_item.dart';
-import '../../services/grupo_familiar_service.dart';
+import '../../models/residencia_admin_detalle.dart';
+import '../../services/residencias_admin_service.dart';
 import '../../theme/admin_theme.dart';
 import '../../widgets/admin_action_bar.dart';
-import '../../widgets/admin_edit_sheets.dart';
 import '../../widgets/admin_header.dart';
-import '../residencias/residencia_edit_screen.dart';
-import 'grupo_familiar_detail_screen.dart';
+import 'residencia_edit_screen.dart';
 
-class GrupoFamiliarSection extends StatefulWidget {
-  const GrupoFamiliarSection({
-    super.key,
-    required this.alertCount,
-    this.detalleInicialId,
-    this.onDetalleInicialConsumido,
-  });
-
-  final int alertCount;
-  final int? detalleInicialId;
-  final VoidCallback? onDetalleInicialConsumido;
-
-  @override
-  State<GrupoFamiliarSection> createState() => _GrupoFamiliarSectionState();
-}
-
-class _GrupoFamiliarSectionState extends State<GrupoFamiliarSection> {
-  int? _detalleId;
-  int? _editResidenciaId;
-  int _detalleRefreshNonce = 0;
-
-  @override
-  void initState() {
-    super.initState();
-    _aplicarDetalleInicial();
-  }
-
-  @override
-  void didUpdateWidget(covariant GrupoFamiliarSection oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (widget.detalleInicialId != null &&
-        widget.detalleInicialId != oldWidget.detalleInicialId) {
-      setState(_aplicarDetalleInicial);
-    }
-  }
-
-  void _aplicarDetalleInicial() {
-    final id = widget.detalleInicialId;
-    if (id == null) return;
-    _detalleId = id;
-    _editResidenciaId = null;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      widget.onDetalleInicialConsumido?.call();
-    });
-  }
-
-  void _abrirDetalle(int idGrupof) => setState(() => _detalleId = idGrupof);
-
-  void _volverLista() => setState(() {
-        _detalleId = null;
-        _editResidenciaId = null;
-      });
-
-  void _abrirEditResidencia(int idResidencia) => setState(() => _editResidenciaId = idResidencia);
-
-  void _volverEditResidencia({bool guardado = false}) => setState(() {
-        _editResidenciaId = null;
-        if (guardado) _detalleRefreshNonce++;
-      });
-
-  @override
-  Widget build(BuildContext context) {
-    if (_editResidenciaId != null) {
-      return ResidenciaEditScreen(
-        idResidencia: _editResidenciaId!,
-        alertCount: widget.alertCount,
-        volverLabel: 'Volver al detalle',
-        onVolver: () => _volverEditResidencia(),
-        onGuardado: () => _volverEditResidencia(guardado: true),
-        onVerGrupoFamiliar: _detalleId != null ? (_) => _volverEditResidencia() : null,
-      );
-    }
-
-    if (_detalleId != null) {
-      return GrupoFamiliarDetailScreen(
-        idGrupof: _detalleId!,
-        alertCount: widget.alertCount,
-        refreshNonce: _detalleRefreshNonce,
-        onVolver: _volverLista,
-        onVerEditarResidencia: _abrirEditResidencia,
-      );
-    }
-
-    return GrupoFamiliarListScreen(
-      alertCount: widget.alertCount,
-      onVerDetalle: _abrirDetalle,
-    );
-  }
-}
-
-class GrupoFamiliarListScreen extends StatefulWidget {
-  const GrupoFamiliarListScreen({
+class ResidenciasListScreen extends StatefulWidget {
+  const ResidenciasListScreen({
     super.key,
     required this.alertCount,
     required this.onVerDetalle,
@@ -111,12 +19,12 @@ class GrupoFamiliarListScreen extends StatefulWidget {
   final ValueChanged<int> onVerDetalle;
 
   @override
-  State<GrupoFamiliarListScreen> createState() => _GrupoFamiliarListScreenState();
+  State<ResidenciasListScreen> createState() => _ResidenciasListScreenState();
 }
 
-class _GrupoFamiliarListScreenState extends State<GrupoFamiliarListScreen> {
+class _ResidenciasListScreenState extends State<ResidenciasListScreen> {
   final _busquedaController = TextEditingController();
-  List<GrupoFamiliarListItem> _grupos = [];
+  List<ResidenciaListItem> _residencias = [];
   bool _loading = true;
 
   @override
@@ -133,10 +41,10 @@ class _GrupoFamiliarListScreenState extends State<GrupoFamiliarListScreen> {
 
   Future<void> _cargar() async {
     setState(() => _loading = true);
-    final lista = await GrupoFamiliarService(Supabase.instance.client).listarGrupos();
+    final lista = await ResidenciasAdminService(Supabase.instance.client).listarResidencias();
     if (mounted) {
       setState(() {
-        _grupos = lista;
+        _residencias = lista;
         _loading = false;
       });
     }
@@ -146,18 +54,9 @@ class _GrupoFamiliarListScreenState extends State<GrupoFamiliarListScreen> {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$accion — próximamente.')));
   }
 
-  Future<void> _editarTelefonoLista(GrupoFamiliarListItem g) async {
-    final ok = await AdminEditSheets.editarTelefonoGrupo(
-      context,
-      idGrupof: g.idGrupof,
-      telefonoActual: g.telefono,
-    );
-    if (ok == true) _cargar();
-  }
-
-  List<GrupoFamiliarListItem> get _filtrados {
+  List<ResidenciaListItem> get _filtrados {
     final q = _busquedaController.text.trim();
-    return _grupos.where((g) => g.coincideConBusqueda(q)).toList();
+    return _residencias.where((r) => r.coincideConBusqueda(q)).toList();
   }
 
   @override
@@ -168,7 +67,7 @@ class _GrupoFamiliarListScreenState extends State<GrupoFamiliarListScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        AdminHeader(title: 'Grupo Familiar', alertCount: widget.alertCount),
+        AdminHeader(title: 'Residencias', alertCount: widget.alertCount),
         Padding(
           padding: const EdgeInsets.fromLTRB(32, 20, 32, 0),
           child: Container(
@@ -184,15 +83,15 @@ class _GrupoFamiliarListScreenState extends State<GrupoFamiliarListScreen> {
                       Expanded(
                         child: AdminSearchBar(
                           controller: _busquedaController,
-                          hint: 'Buscar por nombre, RUT o email...',
+                          hint: 'Buscar por dirección, comuna o ID...',
                           onChanged: (_) => setState(() {}),
                         ),
                       ),
                       const SizedBox(width: 16),
                       AdminPrimaryButton(
-                        label: 'Agregar Grupo Familiar',
+                        label: 'Agregar Residencia',
                         icon: Icons.add,
-                        onPressed: () => _proximamente('Agregar grupo familiar'),
+                        onPressed: () => _proximamente('Agregar residencia'),
                       ),
                     ],
                   )
@@ -201,14 +100,14 @@ class _GrupoFamiliarListScreenState extends State<GrupoFamiliarListScreen> {
                     children: [
                       AdminSearchBar(
                         controller: _busquedaController,
-                        hint: 'Buscar por nombre, RUT o email...',
+                        hint: 'Buscar por dirección, comuna o ID...',
                         onChanged: (_) => setState(() {}),
                       ),
                       const SizedBox(height: 12),
                       AdminPrimaryButton(
-                        label: 'Agregar Grupo Familiar',
+                        label: 'Agregar Residencia',
                         icon: Icons.add,
-                        onPressed: () => _proximamente('Agregar grupo familiar'),
+                        onPressed: () => _proximamente('Agregar residencia'),
                       ),
                     ],
                   ),
@@ -228,7 +127,9 @@ class _GrupoFamiliarListScreenState extends State<GrupoFamiliarListScreen> {
                   : filtrados.isEmpty
                       ? Center(
                           child: Text(
-                            _grupos.isEmpty ? 'No hay grupos familiares registrados.' : 'Sin resultados para la búsqueda.',
+                            _residencias.isEmpty
+                                ? 'No hay residencias registradas.'
+                                : 'Sin resultados para la búsqueda.',
                             style: const TextStyle(color: AdminTheme.mutedText),
                           ),
                         )
@@ -236,15 +137,13 @@ class _GrupoFamiliarListScreenState extends State<GrupoFamiliarListScreen> {
                           onRefresh: _cargar,
                           child: esAncho
                               ? _TablaDesktop(
-                                  grupos: filtrados,
+                                  residencias: filtrados,
                                   onVerDetalle: widget.onVerDetalle,
-                                  onEditar: _editarTelefonoLista,
                                   onEliminar: () => _proximamente('Eliminar'),
                                 )
                               : _ListaMobile(
-                                  grupos: filtrados,
+                                  residencias: filtrados,
                                   onVerDetalle: widget.onVerDetalle,
-                                  onEditar: _editarTelefonoLista,
                                   onEliminar: () => _proximamente('Eliminar'),
                                 ),
                         ),
@@ -258,15 +157,13 @@ class _GrupoFamiliarListScreenState extends State<GrupoFamiliarListScreen> {
 
 class _TablaDesktop extends StatelessWidget {
   const _TablaDesktop({
-    required this.grupos,
+    required this.residencias,
     required this.onVerDetalle,
-    required this.onEditar,
     required this.onEliminar,
   });
 
-  final List<GrupoFamiliarListItem> grupos;
+  final List<ResidenciaListItem> residencias;
   final ValueChanged<int> onVerDetalle;
-  final ValueChanged<GrupoFamiliarListItem> onEditar;
   final VoidCallback onEliminar;
 
   static const _headerStyle = TextStyle(
@@ -284,22 +181,23 @@ class _TablaDesktop extends StatelessWidget {
           padding: EdgeInsets.fromLTRB(20, 16, 20, 12),
           child: Row(
             children: [
-              Expanded(flex: 2, child: Text('RUT TITULAR', style: _headerStyle)),
-              Expanded(flex: 2, child: Text('ESTADO', style: _headerStyle)),
-              Expanded(flex: 2, child: Text('TELÉFONO', style: _headerStyle)),
+              Expanded(flex: 1, child: Text('ID', style: _headerStyle)),
               Expanded(flex: 3, child: Text('DIRECCIÓN', style: _headerStyle)),
-              Expanded(flex: 2, child: Text('FECHA REGISTRO', style: _headerStyle)),
+              Expanded(flex: 2, child: Text('COMUNA', style: _headerStyle)),
+              Expanded(flex: 2, child: Text('ESTADO', style: _headerStyle)),
+              Expanded(flex: 2, child: Text('GRUPO FAMILIAR', style: _headerStyle)),
               SizedBox(width: 260, child: Text('ACCIONES', style: _headerStyle)),
             ],
           ),
         ),
         const Divider(height: 1, color: AdminTheme.cardBorder),
-        ...grupos.map((g) => _FilaDesktop(
-              grupo: g,
-              onVerDetalle: () => onVerDetalle(g.idGrupof),
-              onEditar: onEditar,
-              onEliminar: onEliminar,
-            )),
+        ...residencias.map(
+          (r) => _FilaDesktop(
+            residencia: r,
+            onVerDetalle: () => onVerDetalle(r.idResidencia),
+            onEliminar: onEliminar,
+          ),
+        ),
       ],
     );
   }
@@ -307,16 +205,16 @@ class _TablaDesktop extends StatelessWidget {
 
 class _FilaDesktop extends StatelessWidget {
   const _FilaDesktop({
-    required this.grupo,
+    required this.residencia,
     required this.onVerDetalle,
-    required this.onEditar,
     required this.onEliminar,
   });
 
-  final GrupoFamiliarListItem grupo;
+  final ResidenciaListItem residencia;
   final VoidCallback onVerDetalle;
-  final ValueChanged<GrupoFamiliarListItem> onEditar;
   final VoidCallback onEliminar;
+
+  static const _cellStyle = TextStyle(fontSize: 14, color: AdminTheme.titleText);
 
   @override
   Widget build(BuildContext context) {
@@ -327,11 +225,11 @@ class _FilaDesktop extends StatelessWidget {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              Expanded(flex: 2, child: Text(grupo.rutFormateado, style: _cellStyle)),
-              Expanded(flex: 2, child: _EstadoBadge(vigente: grupo.registroVigente)),
-              Expanded(flex: 2, child: Text(grupo.telefono, style: _cellStyle)),
-              Expanded(flex: 3, child: Text(grupo.direccion, style: _cellStyle)),
-              Expanded(flex: 2, child: Text(grupo.fechaRegistro, style: _cellStyle)),
+              Expanded(flex: 1, child: Text('${residencia.idResidencia}', style: _cellStyle)),
+              Expanded(flex: 3, child: Text(residencia.direccion, style: _cellStyle)),
+              Expanded(flex: 2, child: Text(residencia.comuna, style: _cellStyle)),
+              Expanded(flex: 2, child: _EstadoBadge(vigente: residencia.registroVigente)),
+              Expanded(flex: 2, child: _GrupoBadge(vinculado: residencia.tieneGrupoVinculado)),
               SizedBox(
                 width: 260,
                 child: Wrap(
@@ -339,7 +237,6 @@ class _FilaDesktop extends StatelessWidget {
                   runSpacing: 8,
                   children: [
                     AdminOutlineButton(label: 'Ver Detalle', onPressed: onVerDetalle),
-                    AdminOutlineButton(label: 'Editar', onPressed: () => onEditar(grupo)),
                     AdminDangerButton(label: 'Eliminar', onPressed: onEliminar),
                   ],
                 ),
@@ -351,8 +248,6 @@ class _FilaDesktop extends StatelessWidget {
       ],
     );
   }
-
-  static const _cellStyle = TextStyle(fontSize: 14, color: AdminTheme.titleText);
 }
 
 class _EstadoBadge extends StatelessWidget {
@@ -371,7 +266,7 @@ class _EstadoBadge extends StatelessWidget {
           borderRadius: BorderRadius.circular(20),
         ),
         child: Text(
-          vigente ? 'Vigente' : 'Sin domicilio',
+          vigente ? 'Vigente' : 'Sin registro vigente',
           style: TextStyle(
             fontSize: 12,
             fontWeight: FontWeight.w600,
@@ -383,27 +278,53 @@ class _EstadoBadge extends StatelessWidget {
   }
 }
 
+class _GrupoBadge extends StatelessWidget {
+  const _GrupoBadge({required this.vinculado});
+
+  final bool vinculado;
+
+  @override
+  Widget build(BuildContext context) {
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+        decoration: BoxDecoration(
+          color: vinculado ? const Color(0xFFEFF6FF) : const Color(0xFFF3F4F6),
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Text(
+          vinculado ? 'Vinculado' : 'Sin grupo',
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: vinculado ? AdminTheme.infoBlue : AdminTheme.mutedText,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _ListaMobile extends StatelessWidget {
   const _ListaMobile({
-    required this.grupos,
+    required this.residencias,
     required this.onVerDetalle,
-    required this.onEditar,
     required this.onEliminar,
   });
 
-  final List<GrupoFamiliarListItem> grupos;
+  final List<ResidenciaListItem> residencias;
   final ValueChanged<int> onVerDetalle;
-  final ValueChanged<GrupoFamiliarListItem> onEditar;
   final VoidCallback onEliminar;
 
   @override
   Widget build(BuildContext context) {
     return ListView.separated(
       padding: const EdgeInsets.all(16),
-      itemCount: grupos.length,
+      itemCount: residencias.length,
       separatorBuilder: (_, _) => const SizedBox(height: 12),
       itemBuilder: (context, i) {
-        final g = grupos[i];
+        final r = residencias[i];
         return Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
@@ -416,22 +337,24 @@ class _ListaMobile extends StatelessWidget {
               Row(
                 children: [
                   Expanded(
-                    child: Text(g.rutFormateado, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
+                    child: Text(
+                      r.direccion,
+                      style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
+                    ),
                   ),
-                  _EstadoBadge(vigente: g.registroVigente),
+                  _EstadoBadge(vigente: r.registroVigente),
                 ],
               ),
-              const SizedBox(height: 8),
-              Text(g.direccion, style: const TextStyle(fontSize: 13)),
               const SizedBox(height: 4),
-              Text('${g.telefono} · ${g.fechaRegistro}', style: const TextStyle(fontSize: 12, color: AdminTheme.mutedText)),
+              Text('ID ${r.idResidencia} · ${r.comuna}', style: const TextStyle(color: AdminTheme.mutedText, fontSize: 13)),
+              const SizedBox(height: 8),
+              _GrupoBadge(vinculado: r.tieneGrupoVinculado),
               const SizedBox(height: 12),
               Wrap(
                 spacing: 8,
                 runSpacing: 8,
                 children: [
-                  AdminOutlineButton(label: 'Ver Detalle', onPressed: () => onVerDetalle(g.idGrupof)),
-                  AdminOutlineButton(label: 'Editar', onPressed: () => onEditar(g)),
+                  AdminOutlineButton(label: 'Ver Detalle', onPressed: () => onVerDetalle(r.idResidencia)),
                   AdminDangerButton(label: 'Eliminar', onPressed: onEliminar),
                 ],
               ),
@@ -439,6 +362,47 @@ class _ListaMobile extends StatelessWidget {
           ),
         );
       },
+    );
+  }
+}
+
+class ResidenciaSection extends StatefulWidget {
+  const ResidenciaSection({
+    super.key,
+    required this.alertCount,
+    required this.onVerGrupoFamiliar,
+  });
+
+  final int alertCount;
+  final ValueChanged<int> onVerGrupoFamiliar;
+
+  @override
+  State<ResidenciaSection> createState() => _ResidenciaSectionState();
+}
+
+class _ResidenciaSectionState extends State<ResidenciaSection> {
+  int? _editResidenciaId;
+
+  void _volverLista() => setState(() => _editResidenciaId = null);
+
+  void _abrirMapaResidencia(int idResidencia) => setState(() => _editResidenciaId = idResidencia);
+
+  @override
+  Widget build(BuildContext context) {
+    if (_editResidenciaId != null) {
+      return ResidenciaEditScreen(
+        idResidencia: _editResidenciaId!,
+        alertCount: widget.alertCount,
+        volverLabel: 'Volver a Residencias',
+        onVolver: _volverLista,
+        onGuardado: _volverLista,
+        onVerGrupoFamiliar: widget.onVerGrupoFamiliar,
+      );
+    }
+
+    return ResidenciasListScreen(
+      alertCount: widget.alertCount,
+      onVerDetalle: _abrirMapaResidencia,
     );
   }
 }

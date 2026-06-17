@@ -5,8 +5,11 @@ class BomberoListItem {
   const BomberoListItem({
     required this.rutNum,
     required this.rutFormateado,
+    required this.nombBombero,
+    required this.apePBombero,
     required this.nombreCompleto,
     required this.compania,
+    required this.idCompania,
     required this.comuna,
     required this.esAdmin,
     required this.tieneCuenta,
@@ -14,8 +17,11 @@ class BomberoListItem {
 
   final int rutNum;
   final String rutFormateado;
+  final String nombBombero;
+  final String apePBombero;
   final String nombreCompleto;
   final String compania;
+  final int? idCompania;
   final String comuna;
   final bool esAdmin;
   final bool tieneCuenta;

@@ -10,6 +10,7 @@ import 'dashboard_screen.dart';
 import 'grupo_familiar/grupo_familiar_list_screen.dart';
 import 'login_screen.dart';
 import 'placeholder_section_screen.dart';
+import 'residencias/residencias_list_screen.dart';
 
 /// Shell principal del panel admin con sidebar y navegación entre módulos.
 class AdminHomeScreen extends StatefulWidget {
@@ -24,6 +25,7 @@ class AdminHomeScreen extends StatefulWidget {
 class _AdminHomeScreenState extends State<AdminHomeScreen> {
   AdminSection _section = AdminSection.dashboard;
   int _alertCount = 0;
+  int? _grupoFamiliarDetallePendiente;
   final _scaffoldKey = GlobalKey<ScaffoldState>();
 
   void _onStatsLoaded(DashboardStats stats) {
@@ -42,7 +44,22 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
   }
 
   void _seleccionarSeccion(AdminSection section) {
-    setState(() => _section = section);
+    setState(() {
+      _section = section;
+      if (section != AdminSection.grupoFamiliar) {
+        _grupoFamiliarDetallePendiente = null;
+      }
+    });
+    if (MediaQuery.sizeOf(context).width < 900) {
+      _scaffoldKey.currentState?.closeDrawer();
+    }
+  }
+
+  void _abrirGrupoFamiliar(int idGrupof) {
+    setState(() {
+      _section = AdminSection.grupoFamiliar;
+      _grupoFamiliarDetallePendiente = idGrupof;
+    });
     if (MediaQuery.sizeOf(context).width < 900) {
       _scaffoldKey.currentState?.closeDrawer();
     }
@@ -54,12 +71,15 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
           alertCount: _alertCount,
           onStatsLoaded: _onStatsLoaded,
         ),
-      AdminSection.residencias => PlaceholderSectionScreen(
-          title: 'Residencias',
-          description: 'Gestión de residencias registradas.\nPróximamente disponible.',
+      AdminSection.residencias => ResidenciaSection(
           alertCount: _alertCount,
+          onVerGrupoFamiliar: _abrirGrupoFamiliar,
         ),
-      AdminSection.grupoFamiliar => GrupoFamiliarSection(alertCount: _alertCount),
+      AdminSection.grupoFamiliar => GrupoFamiliarSection(
+          alertCount: _alertCount,
+          detalleInicialId: _grupoFamiliarDetallePendiente,
+          onDetalleInicialConsumido: () => setState(() => _grupoFamiliarDetallePendiente = null),
+        ),
       AdminSection.bomberos => BomberosListScreen(alertCount: _alertCount),
       AdminSection.grifos => PlaceholderSectionScreen(
           title: 'Grifos',
