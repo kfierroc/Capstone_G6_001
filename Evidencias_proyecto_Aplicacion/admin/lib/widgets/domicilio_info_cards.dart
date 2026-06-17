@@ -196,13 +196,11 @@ class ResidenciaInfoCard extends StatelessWidget {
     }
     filas.add(AdminInfoFila('Dirección', _textoDireccion(domicilio)));
     filas.add(AdminInfoFila('Comuna', domicilio.comuna));
-    if (domicilio.lat != null && domicilio.lon != null) {
-      filas.add(
-        AdminInfoFila(
-          'Coordenadas',
-          '${domicilio.lat!.toStringAsFixed(5)}, ${domicilio.lon!.toStringAsFixed(5)}',
-        ),
-      );
+    if (domicilio.lat != null) {
+      filas.add(AdminInfoFila('Lat', domicilio.lat!.toStringAsFixed(5)));
+    }
+    if (domicilio.lon != null) {
+      filas.add(AdminInfoFila('Long', domicilio.lon!.toStringAsFixed(5)));
     }
     return filas;
   }
@@ -240,11 +238,9 @@ class RegistroViviendaInfoCard extends StatelessWidget {
       AdminInfoFila('Tipo vivienda', domicilio.tipoVivienda),
       AdminInfoFila('Estado vivienda', domicilio.estadoVivienda),
       if (domicilio.unidad != null && domicilio.unidad!.isNotEmpty)
-        AdminInfoFila('Unidad / depto', domicilio.unidad!),
+        AdminInfoFila('Casa interior', domicilio.unidad!),
       if (domicilio.descDeptoCond != null)
         AdminInfoFila('Desc. depto / cond.', domicilio.descDeptoCond!),
-      if (domicilio.materialResidencia != null)
-        AdminInfoFila('Material residencia', domicilio.materialResidencia!),
       AdminInfoFila('Registro vigente', domicilio.vigente ? 'Sí' : 'No'),
       AdminInfoFila('Inicio registro', domicilio.fechaInicio),
       AdminInfoFila('Última confirmación', domicilio.fechaUltConfirm),

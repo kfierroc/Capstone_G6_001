@@ -12,6 +12,9 @@
       <excludeFolder url="file://$MODULE_DIR$/Evidencias_proyecto_Aplicacion/bomberos/.dart_tool" />
       <excludeFolder url="file://$MODULE_DIR$/Evidencias_proyecto_Aplicacion/bomberos/.pub" />
       <excludeFolder url="file://$MODULE_DIR$/Evidencias_proyecto_Aplicacion/bomberos/build" />
+      <excludeFolder url="file://$MODULE_DIR$/Evidencias_proyecto_Aplicacion/admin/.dart_tool" />
+      <excludeFolder url="file://$MODULE_DIR$/Evidencias_proyecto_Aplicacion/admin/.pub" />
+      <excludeFolder url="file://$MODULE_DIR$/Evidencias_proyecto_Aplicacion/admin/build" />
     </content>
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />

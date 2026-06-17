@@ -7,7 +7,7 @@ import '../theme/admin_theme.dart';
 import '../widgets/admin_action_bar.dart';
 import 'admin_edit_sheets.dart';
 import 'domicilio_info_cards.dart';
-enum GrupoFamiliarDetalleTab { integrantes, mascotas, materiales }
+enum GrupoFamiliarDetalleTab { integrantes, mascotas, materiales, pisos }
 
 /// Cuerpo del detalle de grupo familiar (cuenta, domicilio, pestañas).
 class GrupoFamiliarDetailContent extends StatefulWidget {
@@ -102,6 +102,29 @@ class _GrupoFamiliarDetailContentState extends State<GrupoFamiliarDetailContent>
           return;
         }
         ok = await AdminEditSheets.agregarMaterial(context, idRegistro: d.idRegistro!);
+      case GrupoFamiliarDetalleTab.pisos:
+        if (d.idRegistro == null) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('No hay registro de vivienda para gestionar pisos.')),
+            );
+          }
+          return;
+        }
+        if (d.domicilio.esDepartamento && d.pisos.isNotEmpty) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('El departamento solo permite un piso. Edítalo desde la lista.')),
+            );
+          }
+          return;
+        }
+        ok = await AdminEditSheets.agregarPiso(
+          context,
+          idRegistro: d.idRegistro!,
+          esDepartamento: d.domicilio.esDepartamento,
+          pisosActuales: d.pisos,
+        );
     }
     await _reloadSi(ok);
   }
@@ -180,6 +203,53 @@ class _GrupoFamiliarDetailContentState extends State<GrupoFamiliarDetailContent>
     }
   }
 
+  Future<void> _editarPiso(PisoViviendaGrupo p) async {
+    final d = widget.detalle;
+    final idReg = d.idRegistro;
+    if (idReg == null || !mounted) return;
+    final ok = await AdminEditSheets.editarPiso(
+      context,
+      idRegistro: idReg,
+      piso: p,
+      esDepartamento: d.domicilio.esDepartamento,
+      pisosActuales: d.pisos,
+    );
+    await _reloadSi(ok);
+  }
+
+  Future<void> _eliminarPiso(PisoViviendaGrupo p) async {
+    final d = widget.detalle;
+    final idReg = d.idRegistro;
+    if (idReg == null || !mounted) return;
+
+    final ok = await AdminEditSheets.confirmarEliminar(
+      context,
+      titulo: 'Eliminar piso',
+      mensaje: d.domicilio.esDepartamento
+          ? '¿Eliminar el piso ${p.numerop} y su material?'
+          : '¿Eliminar el piso ${p.numerop}? Los pisos superiores se renumerarán.',
+    );
+    if (!ok || !mounted) return;
+
+    try {
+      final restantes = d.pisos.where((x) => x.numerop != p.numerop).toList();
+      final pisos = d.domicilio.esDepartamento
+          ? <({int numerop, int idMatPiso})>[]
+          : [
+              for (var i = 0; i < restantes.length; i++)
+                (numerop: i + 1, idMatPiso: restantes[i].idMatPiso),
+            ];
+      await AdminEditService(Supabase.instance.client).reemplazarPisos(
+        idRegistro: idReg,
+        pisos: pisos,
+      );
+      await widget.onReload();
+    } catch (e) {
+      if (!mounted) return;
+      AdminEditSheets.showError(context, e);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final esAncho = MediaQuery.sizeOf(context).width >= 900;
@@ -203,6 +273,7 @@ class _GrupoFamiliarDetailContentState extends State<GrupoFamiliarDetailContent>
           const SizedBox(height: 16),
           _BarraAccionTab(
             tab: _tab,
+            detalle: d,
             esAncho: esAncho,
             controller: _busquedaController,
             onChanged: (_) => setState(() {}),
@@ -226,6 +297,8 @@ class _GrupoFamiliarDetailContentState extends State<GrupoFamiliarDetailContent>
               onEliminarMascota: _eliminarMascota,
               onEditarMaterial: _editarMaterial,
               onEliminarMaterial: _eliminarMaterial,
+              onEditarPiso: _editarPiso,
+              onEliminarPiso: _eliminarPiso,
             ),
           ),
         ],
@@ -267,6 +340,12 @@ class _TabBar extends StatelessWidget {
             icon: Icons.warning_amber_outlined,
             selected: tab == GrupoFamiliarDetalleTab.materiales,
             onTap: () => onChanged(GrupoFamiliarDetalleTab.materiales),
+          ),
+          _TabChip(
+            label: 'Pisos',
+            icon: Icons.layers_outlined,
+            selected: tab == GrupoFamiliarDetalleTab.pisos,
+            onTap: () => onChanged(GrupoFamiliarDetalleTab.pisos),
           ),
         ],
       ),
@@ -326,6 +405,7 @@ class _TabChip extends StatelessWidget {
 class _BarraAccionTab extends StatelessWidget {
   const _BarraAccionTab({
     required this.tab,
+    required this.detalle,
     required this.esAncho,
     required this.controller,
     required this.onChanged,
@@ -333,6 +413,7 @@ class _BarraAccionTab extends StatelessWidget {
   });
 
   final GrupoFamiliarDetalleTab tab;
+  final GrupoFamiliarDetalle detalle;
   final bool esAncho;
   final TextEditingController controller;
   final ValueChanged<String> onChanged;
@@ -342,21 +423,32 @@ class _BarraAccionTab extends StatelessWidget {
         GrupoFamiliarDetalleTab.integrantes => '',
         GrupoFamiliarDetalleTab.mascotas => 'Buscar mascota...',
         GrupoFamiliarDetalleTab.materiales => 'Buscar material...',
+        GrupoFamiliarDetalleTab.pisos => 'Buscar piso o material...',
       };
 
-  bool get _mostrarBusqueda => tab != GrupoFamiliarDetalleTab.integrantes;
+  bool get _mostrarBusqueda =>
+      tab != GrupoFamiliarDetalleTab.integrantes && tab != GrupoFamiliarDetalleTab.pisos;
 
   String get _boton => switch (tab) {
         GrupoFamiliarDetalleTab.integrantes => 'Agregar Integrante',
         GrupoFamiliarDetalleTab.mascotas => 'Agregar Mascota',
         GrupoFamiliarDetalleTab.materiales => 'Agregar Material',
+        GrupoFamiliarDetalleTab.pisos => 'Agregar Piso',
       };
 
   IconData get _icono => switch (tab) {
         GrupoFamiliarDetalleTab.integrantes => Icons.person_add_outlined,
         GrupoFamiliarDetalleTab.mascotas => Icons.add,
         GrupoFamiliarDetalleTab.materiales => Icons.add,
+        GrupoFamiliarDetalleTab.pisos => Icons.add,
       };
+
+  bool _mostrarAgregar(GrupoFamiliarDetalle detalle) {
+    if (tab != GrupoFamiliarDetalleTab.pisos) return true;
+    if (detalle.idRegistro == null) return false;
+    if (detalle.domicilio.esDepartamento && detalle.pisos.isNotEmpty) return false;
+    return true;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -368,7 +460,8 @@ class _BarraAccionTab extends StatelessWidget {
                 const SizedBox(width: 16),
               ] else
                 const Spacer(),
-              AdminPrimaryButton(label: _boton, icon: _icono, onPressed: onAgregar),
+              if (_mostrarAgregar(detalle))
+                AdminPrimaryButton(label: _boton, icon: _icono, onPressed: onAgregar),
             ],
           )
         : Column(
@@ -378,7 +471,8 @@ class _BarraAccionTab extends StatelessWidget {
                 AdminSearchBar(controller: controller, hint: _hint, onChanged: onChanged),
                 const SizedBox(height: 12),
               ],
-              AdminPrimaryButton(label: _boton, icon: _icono, onPressed: onAgregar),
+              if (_mostrarAgregar(detalle))
+                AdminPrimaryButton(label: _boton, icon: _icono, onPressed: onAgregar),
             ],
           );
 
@@ -405,6 +499,8 @@ class _ContenidoTab extends StatelessWidget {
     required this.onEliminarMascota,
     required this.onEditarMaterial,
     required this.onEliminarMaterial,
+    required this.onEditarPiso,
+    required this.onEliminarPiso,
   });
 
   final GrupoFamiliarDetalleTab tab;
@@ -416,6 +512,8 @@ class _ContenidoTab extends StatelessWidget {
   final ValueChanged<MascotaGrupo> onEliminarMascota;
   final ValueChanged<MaterialPeligrosoGrupo> onEditarMaterial;
   final ValueChanged<MaterialPeligrosoGrupo> onEliminarMaterial;
+  final ValueChanged<PisoViviendaGrupo> onEditarPiso;
+  final ValueChanged<PisoViviendaGrupo> onEliminarPiso;
 
   @override
   Widget build(BuildContext context) {
@@ -437,6 +535,13 @@ class _ContenidoTab extends StatelessWidget {
           busqueda: busqueda,
           onEditar: onEditarMaterial,
           onEliminar: onEliminarMaterial,
+        ),
+      GrupoFamiliarDetalleTab.pisos => _ListaPisos(
+          pisos: detalle.pisos,
+          esDepartamento: detalle.domicilio.esDepartamento,
+          tieneRegistro: detalle.idRegistro != null,
+          onEditar: onEditarPiso,
+          onEliminar: onEliminarPiso,
         ),
     };
   }
@@ -678,6 +783,92 @@ class _ListaMateriales extends StatelessWidget {
             IconButton(
               tooltip: 'Eliminar',
               onPressed: () => onEliminar(m),
+              icon: const Icon(Icons.delete_outline, size: 20, color: AdminTheme.alertRed),
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _ListaPisos extends StatelessWidget {
+  const _ListaPisos({
+    required this.pisos,
+    required this.esDepartamento,
+    required this.tieneRegistro,
+    required this.onEditar,
+    required this.onEliminar,
+  });
+
+  final List<PisoViviendaGrupo> pisos;
+  final bool esDepartamento;
+  final bool tieneRegistro;
+  final ValueChanged<PisoViviendaGrupo> onEditar;
+  final ValueChanged<PisoViviendaGrupo> onEliminar;
+
+  @override
+  Widget build(BuildContext context) {
+    if (!tieneRegistro) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.all(32),
+          child: Text(
+            'No hay registro de vivienda para gestionar pisos.',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: AdminTheme.mutedText, fontSize: 14),
+          ),
+        ),
+      );
+    }
+
+    if (pisos.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(32),
+          child: Text(
+            esDepartamento
+                ? 'Registra el piso del departamento (número real, ej. Piso 22) y su material.'
+                : 'Agrega los pisos de la vivienda con su material (Piso 1, Piso 2, …).',
+            textAlign: TextAlign.center,
+            style: const TextStyle(color: AdminTheme.mutedText, fontSize: 14),
+          ),
+        ),
+      );
+    }
+
+    return ListView.separated(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      padding: const EdgeInsets.all(20),
+      itemCount: pisos.length,
+      separatorBuilder: (_, _) => const Divider(height: 24, color: AdminTheme.cardBorder),
+      itemBuilder: (_, i) {
+        final p = pisos[i];
+        return Row(
+          children: [
+            Expanded(
+              child: ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: CircleAvatar(
+                  backgroundColor: const Color(0xFFEFF6FF),
+                  child: Text(
+                    '${p.numerop}',
+                    style: const TextStyle(fontWeight: FontWeight.w700, color: AdminTheme.infoBlue, fontSize: 13),
+                  ),
+                ),
+                title: Text('Piso ${p.numerop}', style: const TextStyle(fontWeight: FontWeight.w600)),
+                subtitle: Text(p.material),
+              ),
+            ),
+            IconButton(
+              tooltip: 'Editar',
+              onPressed: () => onEditar(p),
+              icon: const Icon(Icons.edit_outlined, size: 20, color: AdminTheme.infoBlue),
+            ),
+            IconButton(
+              tooltip: 'Eliminar',
+              onPressed: () => onEliminar(p),
               icon: const Icon(Icons.delete_outline, size: 20, color: AdminTheme.alertRed),
             ),
           ],

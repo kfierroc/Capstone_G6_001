@@ -215,16 +215,18 @@ class AdminEditService {
     await _client.from('registro_v').update(payload).eq('id_registro', idRegistro);
   }
 
-  Future<void> reemplazarMaterialPrimerPiso({
+  Future<void> reemplazarPisos({
     required int idRegistro,
-    required int idMatPiso,
+    required List<({int numerop, int idMatPiso})> pisos,
   }) async {
     await _client.from('piso_v').delete().eq('id_registro', idRegistro);
-    await _client.from('piso_v').insert({
-      'id_registro': idRegistro,
-      'numerop': 1,
-      'id_mat_piso': idMatPiso,
-    });
+    for (final p in pisos) {
+      await _client.from('piso_v').insert({
+        'id_registro': idRegistro,
+        'numerop': p.numerop,
+        'id_mat_piso': p.idMatPiso,
+      });
+    }
   }
 
   /// Marca el registro de vivienda vigente como no vigente (desvincula grupo/residencia).

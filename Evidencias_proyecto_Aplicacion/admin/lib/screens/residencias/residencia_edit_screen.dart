@@ -3,8 +3,8 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import '../../services/admin_catalog_service.dart';
 import '../../services/admin_edit_service.dart';
+import '../../services/comuna_coordenadas_service.dart';
 import '../../services/residencias_admin_service.dart';
 import '../../theme/admin_theme.dart';
 import '../../widgets/admin_detail_shell.dart';
@@ -46,12 +46,15 @@ class _ResidenciaEditScreenState extends State<ResidenciaEditScreen> {
 
   String _comunaNombre = '—';
   String _direccionCorta = '';
-  List<CatalogItem> _comunas = [];
-  int? _cutCom;
   double? _lat;
   double? _lon;
+  bool _calculandoComuna = false;
   int? _idGrupof;
   String? _titularGrupo;
+  String? _rutTitular;
+  String _tipoVivienda = '—';
+  String _estadoVivienda = '—';
+  bool _tieneRegistro = false;
 
   static const _centroChile = LatLng(-33.4489, -70.6693);
 
@@ -70,7 +73,6 @@ class _ResidenciaEditScreenState extends State<ResidenciaEditScreen> {
     });
     final client = Supabase.instance.client;
     final det = await ResidenciasAdminService(client).obtenerDetalle(widget.idResidencia);
-    final comunas = await AdminCatalogService(client).comunas();
     if (!mounted) return;
 
     if (det == null) {
@@ -83,14 +85,16 @@ class _ResidenciaEditScreenState extends State<ResidenciaEditScreen> {
 
     _calleCtrl.text = det.calle;
     _nroCtrl.text = '${det.nroDireccion}';
-    _cutCom = det.cutCom;
     _lat = det.lat;
     _lon = det.lon;
-    _comunas = comunas;
     _comunaNombre = det.comuna;
     _direccionCorta = det.direccionCorta;
     _idGrupof = det.grupoDetalle?.idGrupof;
     _titularGrupo = det.grupoDetalle?.titularEtiqueta;
+    _rutTitular = det.grupoDetalle?.rutFormateado;
+    _tipoVivienda = det.domicilio.tipoVivienda;
+    _estadoVivienda = det.domicilio.estadoVivienda;
+    _tieneRegistro = det.domicilio.tieneRegistro;
 
     setState(() => _loading = false);
     _centrarMapa();
@@ -113,6 +117,21 @@ class _ResidenciaEditScreenState extends State<ResidenciaEditScreen> {
     setState(() => _editando = false);
   }
 
+  Future<void> _actualizarComunaDesdeCoordenadas(double lat, double lon) async {
+    setState(() => _calculandoComuna = true);
+    try {
+      final res = await ComunaCoordenadasService(Supabase.instance.client).resolverComuna(lat, lon);
+      if (!mounted) return;
+      setState(() => _comunaNombre = res.nombre);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _comunaNombre = '—');
+      AdminEditSheets.showError(context, e);
+    } finally {
+      if (mounted) setState(() => _calculandoComuna = false);
+    }
+  }
+
   Future<void> _guardar() async {
     final nro = int.tryParse(_nroCtrl.text.trim());
     if (nro == null) {
@@ -123,20 +142,20 @@ class _ResidenciaEditScreenState extends State<ResidenciaEditScreen> {
       AdminEditSheets.showError(context, AdminEditException('Selecciona una ubicación en el mapa.'));
       return;
     }
-    if (_cutCom == null) {
-      AdminEditSheets.showError(context, AdminEditException('Selecciona una comuna.'));
-      return;
-    }
 
     setState(() => _guardando = true);
     try {
+      final res = await ComunaCoordenadasService(Supabase.instance.client).resolverComuna(_lat!, _lon!);
+      if (!mounted) return;
+      _comunaNombre = res.nombre;
+
       await AdminEditService(Supabase.instance.client).actualizarResidencia(
         idResidencia: widget.idResidencia,
         calle: _calleCtrl.text,
         nroDireccion: nro,
         lat: _lat!,
         lon: _lon!,
-        cutCom: _cutCom!,
+        cutCom: res.cutCom,
       );
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -156,6 +175,7 @@ class _ResidenciaEditScreenState extends State<ResidenciaEditScreen> {
       _lat = point.latitude;
       _lon = point.longitude;
     });
+    _actualizarComunaDesdeCoordenadas(point.latitude, point.longitude);
   }
 
   @override
@@ -185,7 +205,7 @@ class _ResidenciaEditScreenState extends State<ResidenciaEditScreen> {
               ? Row(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Expanded(child: _panelInformacion()),
+                    Expanded(child: _columnaIzquierda()),
                     const SizedBox(width: 16),
                     Expanded(child: _panelMapa()),
                   ],
@@ -194,12 +214,87 @@ class _ResidenciaEditScreenState extends State<ResidenciaEditScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      _panelInformacion(),
+                      _columnaIzquierda(),
                       const SizedBox(height: 16),
                       SizedBox(height: 320, child: _panelMapa()),
                     ],
                   ),
                 ),
+    );
+  }
+
+  Widget _columnaIzquierda() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _panelInformacion(),
+        if (_mostrarApartadoRegistro) ...[
+          const SizedBox(height: 16),
+          _panelRegistroVinculado(),
+        ],
+      ],
+    );
+  }
+
+  bool get _mostrarApartadoRegistro => !_editando && (_tieneRegistro || _idGrupof != null);
+
+  Widget _panelRegistroVinculado() {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AdminTheme.cardBorder),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const Row(
+            children: [
+              Icon(Icons.home_outlined, size: 20, color: AdminTheme.infoBlue),
+              SizedBox(width: 8),
+              Text(
+                'Registro de vivienda vinculado',
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                  color: AdminTheme.titleText,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          if (_rutTitular != null && _rutTitular!.isNotEmpty)
+            _filaInfo('RUT titular', _rutTitular!),
+          if (_tipoVivienda != '—') _filaInfo('Tipo vivienda', _tipoVivienda),
+          if (_estadoVivienda != '—') _filaInfo('Estado vivienda', _estadoVivienda),
+          if (_idGrupof != null && widget.onVerGrupoFamiliar != null) ...[
+            const SizedBox(height: 8),
+            OutlinedButton.icon(
+              onPressed: () => widget.onVerGrupoFamiliar!(_idGrupof!),
+              icon: const Icon(Icons.groups_outlined, size: 18),
+              label: Text(
+                _titularGrupo != null && _titularGrupo!.isNotEmpty
+                    ? 'Ver grupo familiar · $_titularGrupo'
+                    : 'Ver grupo familiar',
+              ),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AdminTheme.infoBlue,
+                side: const BorderSide(color: AdminTheme.infoBlue),
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+            ),
+          ] else if (_idGrupof == null)
+            Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: Text(
+                'Sin grupo familiar vinculado al registro vigente.',
+                style: TextStyle(fontSize: 12, color: AdminTheme.mutedText.withValues(alpha: 0.9)),
+              ),
+            ),
+        ],
+      ),
     );
   }
 
@@ -275,23 +370,7 @@ class _ResidenciaEditScreenState extends State<ResidenciaEditScreen> {
                       keyboardType: TextInputType.number,
                     ),
                     const SizedBox(height: 12),
-                    InputDecorator(
-                      decoration: const InputDecoration(labelText: 'Comuna', border: OutlineInputBorder()),
-                      child: DropdownButtonHideUnderline(
-                        child: DropdownButton<int>(
-                          isExpanded: true,
-                          value: _comunas.any((c) => c.id == _cutCom) ? _cutCom : null,
-                          hint: const Text('Selecciona comuna'),
-                          items: _comunas
-                              .map((c) => DropdownMenuItem(value: c.id, child: Text(c.label)))
-                              .toList(),
-                          onChanged: (v) => setState(() {
-                            _cutCom = v;
-                            _comunaNombre = _comunas.firstWhere((c) => c.id == v).label;
-                          }),
-                        ),
-                      ),
-                    ),
+                    _filaInfo('Comuna', _calculandoComuna ? 'Calculando…' : _comunaNombre),
                   ] else ...[
                     _filaInfo('Calle', _calleCtrl.text.isEmpty ? '—' : _calleCtrl.text),
                     _filaInfo('Número', _nroCtrl.text.isEmpty ? '—' : _nroCtrl.text),
@@ -299,42 +378,21 @@ class _ResidenciaEditScreenState extends State<ResidenciaEditScreen> {
                     _filaInfo('ID residencia', '${widget.idResidencia}'),
                   ],
                   const SizedBox(height: 4),
-                  _filaInfo(
-                    'Coordenadas',
-                    _lat != null && _lon != null
-                        ? '${_lat!.toStringAsFixed(5)}, ${_lon!.toStringAsFixed(5)}'
-                        : 'Sin coordenadas registradas',
-                  ),
+                  _filaInfo('Lat', _lat != null ? _lat!.toStringAsFixed(5) : '—'),
+                  _filaInfo('Long', _lon != null ? _lon!.toStringAsFixed(5) : '—'),
+                  if (_editando)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 4),
+                      child: Text(
+                        'La comuna se calcula automáticamente según las coordenadas del mapa.',
+                        style: TextStyle(fontSize: 12, color: AdminTheme.mutedText.withValues(alpha: 0.9)),
+                      ),
+                    ),
                   if (_editando)
                     Padding(
                       padding: const EdgeInsets.only(top: 8),
                       child: Text(
                         'Toca el mapa a la derecha para mover el marcador.',
-                        style: TextStyle(fontSize: 12, color: AdminTheme.mutedText.withValues(alpha: 0.9)),
-                      ),
-                    ),
-                  if (_idGrupof != null && widget.onVerGrupoFamiliar != null && !_editando) ...[
-                    const SizedBox(height: 16),
-                    OutlinedButton.icon(
-                      onPressed: () => widget.onVerGrupoFamiliar!(_idGrupof!),
-                      icon: const Icon(Icons.groups_outlined, size: 18),
-                      label: Text(
-                        _titularGrupo != null && _titularGrupo!.isNotEmpty
-                            ? 'Ver grupo familiar · $_titularGrupo'
-                            : 'Ver grupo familiar',
-                      ),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: AdminTheme.infoBlue,
-                        side: const BorderSide(color: AdminTheme.infoBlue),
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                      ),
-                    ),
-                  ] else if (_idGrupof == null && !_editando)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 16),
-                      child: Text(
-                        'Sin grupo familiar vinculado al registro vigente.',
                         style: TextStyle(fontSize: 12, color: AdminTheme.mutedText.withValues(alpha: 0.9)),
                       ),
                     ),

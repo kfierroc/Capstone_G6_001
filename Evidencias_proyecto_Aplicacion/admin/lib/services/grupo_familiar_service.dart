@@ -78,6 +78,7 @@ class GrupoFamiliarService {
       final registroVigente = _registroVigenteMap(gf['registro_v']);
       final idRegistro = registroVigente != null ? _asInt(registroVigente['id_registro']) : null;
       final materiales = idRegistro != null ? await _cargarMateriales(idRegistro) : <MaterialPeligrosoGrupo>[];
+      final pisos = idRegistro != null ? await _cargarPisos(idRegistro) : <PisoViviendaGrupo>[];
 
       final titularIntegrante = integrantes.where((i) => i.esTitular);
       final titularRow = titularIntegrante.isEmpty ? null : titularIntegrante.first;
@@ -107,6 +108,7 @@ class GrupoFamiliarService {
         integrantes: integrantes,
         mascotas: mascotas,
         materiales: materiales,
+        pisos: pisos,
       );
     } catch (_) {
       return null;
@@ -229,7 +231,7 @@ class GrupoFamiliarService {
         firstMatId ??= idMat;
         if (material == null || material.isEmpty) continue;
         final piso = _asInt(row['numerop']);
-        if (piso != null && raw.length > 1) {
+        if (piso != null) {
           partes.add('Piso $piso: $material');
         } else {
           partes.add(material);
@@ -238,6 +240,25 @@ class GrupoFamiliarService {
       return (partes.isEmpty ? null : partes.join(' · '), firstMatId);
     } catch (_) {
       return (null, null);
+    }
+  }
+
+  Future<List<PisoViviendaGrupo>> _cargarPisos(int idRegistro) async {
+    try {
+      final raw = await _client
+          .from('piso_v')
+          .select('numerop, id_mat_piso, tipo_mat_piso(material_piso)')
+          .eq('id_registro', idRegistro)
+          .order('numerop');
+
+      return raw.map((row) {
+        final numerop = _asInt(row['numerop'])!;
+        final idMat = _asInt(row['id_mat_piso'])!;
+        final material = _nestedString(row['tipo_mat_piso'], 'material_piso') ?? '—';
+        return PisoViviendaGrupo(numerop: numerop, idMatPiso: idMat, material: material);
+      }).toList();
+    } catch (_) {
+      return [];
     }
   }
 

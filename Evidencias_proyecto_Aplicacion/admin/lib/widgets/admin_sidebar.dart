@@ -7,6 +7,7 @@ enum AdminSection {
   dashboard('Dashboard', Icons.dashboard_outlined),
   residencias('Residencias', Icons.home_outlined),
   grupoFamiliar('Grupo Familiar', Icons.people_outline),
+  catalogos('Catálogos', Icons.list_alt_outlined),
   bomberos('Bomberos', Icons.shield_outlined),
   grifos('Grifos', Icons.water_drop_outlined);
 

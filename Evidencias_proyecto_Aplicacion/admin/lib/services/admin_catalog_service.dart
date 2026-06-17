@@ -1,10 +1,18 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class CatalogItem {
-  const CatalogItem({required this.id, required this.label});
+  const CatalogItem({
+    required this.id,
+    required this.label,
+    this.subtitle,
+    this.foreignKeyId,
+  });
 
   final int id;
   final String label;
+  /// Texto auxiliar (p. ej. categoría de una condición).
+  final String? subtitle;
+  final int? foreignKeyId;
 }
 
 class AdminCatalogService {
@@ -44,7 +52,7 @@ class AdminCatalogService {
 
   Future<List<CatalogItem>> _load(String tabla, String idCol, String labelCol) async {
     try {
-      final raw = await _client.from(tabla).select('$idCol, $labelCol').order(labelCol);
+      final raw = await _client.from(tabla).select('$idCol, $labelCol').order(idCol, ascending: true);
       return raw
           .map((r) => CatalogItem(
                 id: (r[idCol] as num).toInt(),

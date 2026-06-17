@@ -38,6 +38,18 @@ class MascotaGrupo {
   final int idTamanio;
 }
 
+class PisoViviendaGrupo {
+  const PisoViviendaGrupo({
+    required this.numerop,
+    required this.idMatPiso,
+    required this.material,
+  });
+
+  final int numerop;
+  final int idMatPiso;
+  final String material;
+}
+
 class MaterialPeligrosoGrupo {
   const MaterialPeligrosoGrupo({
     required this.idMatPelig,
@@ -132,6 +144,8 @@ class DomicilioGrupoInfo {
     return t == 'departamento' || t == 'condominio';
   }
 
+  bool get esDepartamento => tipoVivienda.trim().toLowerCase() == 'departamento';
+
   static const sinRegistro = DomicilioGrupoInfo(
     tieneRegistro: false,
     vigente: false,
@@ -157,6 +171,7 @@ class GrupoFamiliarDetalle {
     required this.integrantes,
     required this.mascotas,
     required this.materiales,
+    required this.pisos,
   });
 
   final int idGrupof;
@@ -169,6 +184,7 @@ class GrupoFamiliarDetalle {
   final List<IntegranteGrupo> integrantes;
   final List<MascotaGrupo> mascotas;
   final List<MaterialPeligrosoGrupo> materiales;
+  final List<PisoViviendaGrupo> pisos;
 
   int? get idRegistro => domicilio.idRegistro;
 }
