@@ -5,6 +5,7 @@ import '../../models/bombero_list_item.dart';
 import '../../services/bomberos_admin_service.dart';
 import '../../theme/admin_theme.dart';
 import '../../widgets/admin_action_bar.dart';
+import '../../widgets/admin_edit_sheets.dart';
 import '../../widgets/admin_header.dart';
 
 class BomberosListScreen extends StatefulWidget {
@@ -46,6 +47,11 @@ class _BomberosListScreenState extends State<BomberosListScreen> {
 
   void _proximamente(String accion) {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$accion — próximamente.')));
+  }
+
+  Future<void> _editarBombero(BomberoListItem b) async {
+    final ok = await AdminEditSheets.editarBombero(context, bombero: b);
+    if (ok == true) _cargar();
   }
 
   List<BomberoListItem> get _filtrados {
@@ -133,13 +139,13 @@ class _BomberosListScreenState extends State<BomberosListScreen> {
                               ? _TablaDesktop(
                                   bomberos: filtrados,
                                   onVerDetalle: () => _proximamente('Ver detalle'),
-                                  onEditar: () => _proximamente('Editar'),
+                                  onEditar: _editarBombero,
                                   onEliminar: () => _proximamente('Eliminar'),
                                 )
                               : _ListaMobile(
                                   bomberos: filtrados,
                                   onVerDetalle: () => _proximamente('Ver detalle'),
-                                  onEditar: () => _proximamente('Editar'),
+                                  onEditar: _editarBombero,
                                   onEliminar: () => _proximamente('Eliminar'),
                                 ),
                         ),
@@ -161,7 +167,7 @@ class _TablaDesktop extends StatelessWidget {
 
   final List<BomberoListItem> bomberos;
   final VoidCallback onVerDetalle;
-  final VoidCallback onEditar;
+  final ValueChanged<BomberoListItem> onEditar;
   final VoidCallback onEliminar;
 
   static const _headerStyle = TextStyle(
@@ -213,7 +219,7 @@ class _FilaDesktop extends StatelessWidget {
 
   final BomberoListItem bombero;
   final VoidCallback onVerDetalle;
-  final VoidCallback onEditar;
+  final ValueChanged<BomberoListItem> onEditar;
   final VoidCallback onEliminar;
 
   static const _cellStyle = TextStyle(fontSize: 14, color: AdminTheme.titleText);
@@ -240,7 +246,7 @@ class _FilaDesktop extends StatelessWidget {
                   runSpacing: 8,
                   children: [
                     AdminOutlineButton(label: 'Ver Detalle', onPressed: onVerDetalle),
-                    AdminOutlineButton(label: 'Editar', onPressed: onEditar),
+                    AdminOutlineButton(label: 'Editar', onPressed: () => onEditar(bombero)),
                     AdminDangerButton(label: 'Eliminar', onPressed: onEliminar),
                   ],
                 ),
@@ -323,7 +329,7 @@ class _ListaMobile extends StatelessWidget {
 
   final List<BomberoListItem> bomberos;
   final VoidCallback onVerDetalle;
-  final VoidCallback onEditar;
+  final ValueChanged<BomberoListItem> onEditar;
   final VoidCallback onEliminar;
 
   @override
@@ -366,7 +372,7 @@ class _ListaMobile extends StatelessWidget {
                 runSpacing: 8,
                 children: [
                   AdminOutlineButton(label: 'Ver Detalle', onPressed: onVerDetalle),
-                  AdminOutlineButton(label: 'Editar', onPressed: onEditar),
+                  AdminOutlineButton(label: 'Editar', onPressed: () => onEditar(b)),
                   AdminDangerButton(label: 'Eliminar', onPressed: onEliminar),
                 ],
               ),
