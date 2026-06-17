@@ -6,6 +6,7 @@ import '../models/dashboard_stats.dart';
 import '../theme/admin_theme.dart';
 import '../widgets/admin_sidebar.dart';
 import 'bomberos/bomberos_list_screen.dart';
+import 'catalogos/catalogos_screen.dart';
 import 'dashboard_screen.dart';
 import 'grupo_familiar/grupo_familiar_list_screen.dart';
 import 'login_screen.dart';
@@ -80,6 +81,7 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
           detalleInicialId: _grupoFamiliarDetallePendiente,
           onDetalleInicialConsumido: () => setState(() => _grupoFamiliarDetallePendiente = null),
         ),
+      AdminSection.catalogos => CatalogosScreen(alertCount: _alertCount),
       AdminSection.bomberos => BomberosListScreen(alertCount: _alertCount),
       AdminSection.grifos => PlaceholderSectionScreen(
           title: 'Grifos',

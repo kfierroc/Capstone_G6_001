@@ -186,6 +186,40 @@ class AdminEditSheets {
     );
   }
 
+  static Future<bool?> agregarPiso(
+    BuildContext context, {
+    required int idRegistro,
+    required bool esDepartamento,
+    required List<PisoViviendaGrupo> pisosActuales,
+  }) {
+    return showDialog<bool>(
+      context: context,
+      builder: (ctx) => _PisoDialog(
+        idRegistro: idRegistro,
+        esDepartamento: esDepartamento,
+        pisosActuales: pisosActuales,
+      ),
+    );
+  }
+
+  static Future<bool?> editarPiso(
+    BuildContext context, {
+    required int idRegistro,
+    required PisoViviendaGrupo piso,
+    required bool esDepartamento,
+    required List<PisoViviendaGrupo> pisosActuales,
+  }) {
+    return showDialog<bool>(
+      context: context,
+      builder: (ctx) => _PisoDialog(
+        idRegistro: idRegistro,
+        esDepartamento: esDepartamento,
+        pisosActuales: pisosActuales,
+        piso: piso,
+      ),
+    );
+  }
+
   static Future<bool?> editarBombero(BuildContext context, {required BomberoListItem bombero}) {
     return showDialog<bool>(
       context: context,
@@ -260,10 +294,8 @@ class _EditarRegistroViviendaDialogState extends State<_EditarRegistroViviendaDi
 
   List<CatalogItem> _tipos = [];
   List<CatalogItem> _estados = [];
-  List<CatalogItem> _matsPiso = [];
   int? _idTipo;
   int? _idEstado;
-  int? _idMatPiso;
   bool _loading = true;
   bool _guardando = false;
 
@@ -278,7 +310,6 @@ class _EditarRegistroViviendaDialogState extends State<_EditarRegistroViviendaDi
     _fechaUltCtrl = TextEditingController(text: d.fechaUltConfirm == '—' ? '' : d.fechaUltConfirm);
     _idTipo = d.idTipoV;
     _idEstado = d.idEstadoV;
-    _idMatPiso = d.idMatPiso;
     _cargarCatalogos();
   }
 
@@ -287,13 +318,11 @@ class _EditarRegistroViviendaDialogState extends State<_EditarRegistroViviendaDi
     final results = await Future.wait([
       cat.tiposVivienda(),
       cat.estadosVivienda(),
-      cat.materialesPiso(),
     ]);
     if (mounted) {
       setState(() {
         _tipos = results[0];
         _estados = results[1];
-        _matsPiso = results[2];
         _loading = false;
       });
     }
@@ -321,9 +350,6 @@ class _EditarRegistroViviendaDialogState extends State<_EditarRegistroViviendaDi
         fechaIniR: _fechaIniCtrl.text.trim().isEmpty ? null : _fechaIniCtrl.text.trim(),
         fechaUltConfirm: _fechaUltCtrl.text.trim().isEmpty ? null : _fechaUltCtrl.text.trim(),
       );
-      if (_idMatPiso != null) {
-        await AdminEditSheets._edit().reemplazarMaterialPrimerPiso(idRegistro: idReg, idMatPiso: _idMatPiso!);
-      }
       if (mounted) Navigator.pop(context, true);
     } catch (e) {
       if (mounted) AdminEditSheets.showError(context, e);
@@ -370,7 +396,10 @@ class _EditarRegistroViviendaDialogState extends State<_EditarRegistroViviendaDi
                     const SizedBox(height: 12),
                     TextField(
                       controller: _unidadCtrl,
-                      decoration: const InputDecoration(labelText: 'Unidad / depto', border: OutlineInputBorder()),
+                      decoration: const InputDecoration(
+                        labelText: 'Casa interior (opcional)',
+                        border: OutlineInputBorder(),
+                      ),
                     ),
                     if (_esDeptoOCondo) ...[
                       const SizedBox(height: 12),
@@ -379,8 +408,6 @@ class _EditarRegistroViviendaDialogState extends State<_EditarRegistroViviendaDi
                         decoration: const InputDecoration(labelText: 'Desc. depto / cond.', border: OutlineInputBorder()),
                       ),
                     ],
-                    const SizedBox(height: 12),
-                    _dropdown('Material residencia (piso 1)', _idMatPiso, _matsPiso, (v) => setState(() => _idMatPiso = v)),
                     const SizedBox(height: 12),
                     TextField(
                       controller: _fechaIniCtrl,
@@ -753,6 +780,180 @@ class _MaterialDialogState extends State<_MaterialDialog> {
                     controller: _cantCtrl,
                     decoration: const InputDecoration(labelText: 'Cantidad', border: OutlineInputBorder()),
                     keyboardType: TextInputType.number,
+                  ),
+                ],
+              ),
+      ),
+      actions: [
+        TextButton(onPressed: _guardando ? null : () => Navigator.pop(context), child: const Text('Cancelar')),
+        FilledButton(
+          onPressed: _loading || _guardando ? null : _guardar,
+          child: _guardando
+              ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+              : const Text('Guardar'),
+        ),
+      ],
+    );
+  }
+}
+
+class _PisoDialog extends StatefulWidget {
+  const _PisoDialog({
+    required this.idRegistro,
+    required this.esDepartamento,
+    required this.pisosActuales,
+    this.piso,
+  });
+
+  final int idRegistro;
+  final bool esDepartamento;
+  final List<PisoViviendaGrupo> pisosActuales;
+  final PisoViviendaGrupo? piso;
+
+  @override
+  State<_PisoDialog> createState() => _PisoDialogState();
+}
+
+class _PisoDialogState extends State<_PisoDialog> {
+  static const _numerosPisoDepartamento = 60;
+
+  List<CatalogItem> _matsPiso = [];
+  int? _idMatPiso;
+  int? _numeropDepto;
+  bool _loading = true;
+  bool _guardando = false;
+
+  bool get _editando => widget.piso != null;
+
+  @override
+  void initState() {
+    super.initState();
+    final p = widget.piso;
+    if (p != null) {
+      _idMatPiso = p.idMatPiso;
+      _numeropDepto = p.numerop;
+    }
+    _cargarCatalogos();
+  }
+
+  Future<void> _cargarCatalogos() async {
+    final mats = await AdminEditSheets._catalog().materialesPiso();
+    if (mounted) {
+      setState(() {
+        _matsPiso = mats;
+        _idMatPiso ??= mats.firstOrNull?.id;
+        _loading = false;
+      });
+    }
+  }
+
+  Future<void> _guardar() async {
+    if (_idMatPiso == null) throw AdminEditException('Selecciona el material del piso.');
+
+    final actuales = List<PisoViviendaGrupo>.from(widget.pisosActuales);
+
+    if (widget.esDepartamento) {
+      final numerop = _numeropDepto;
+      if (numerop == null) throw AdminEditException('Selecciona el número de piso del departamento.');
+      final pisos = [
+        (numerop: numerop, idMatPiso: _idMatPiso!),
+      ];
+      setState(() => _guardando = true);
+      try {
+        await AdminEditSheets._edit().reemplazarPisos(idRegistro: widget.idRegistro, pisos: pisos);
+        if (mounted) Navigator.pop(context, true);
+      } catch (e) {
+        if (mounted) AdminEditSheets.showError(context, e);
+      } finally {
+        if (mounted) setState(() => _guardando = false);
+      }
+      return;
+    }
+
+    if (_editando) {
+      final idx = actuales.indexWhere((p) => p.numerop == widget.piso!.numerop);
+      if (idx >= 0) {
+        actuales[idx] = PisoViviendaGrupo(
+          numerop: widget.piso!.numerop,
+          idMatPiso: _idMatPiso!,
+          material: _matsPiso.firstWhere((m) => m.id == _idMatPiso).label,
+        );
+      }
+    } else {
+      actuales.add(
+        PisoViviendaGrupo(
+          numerop: actuales.length + 1,
+          idMatPiso: _idMatPiso!,
+          material: _matsPiso.firstWhere((m) => m.id == _idMatPiso).label,
+        ),
+      );
+    }
+
+    final pisos = actuales.map((p) => (numerop: p.numerop, idMatPiso: p.idMatPiso)).toList();
+    setState(() => _guardando = true);
+    try {
+      await AdminEditSheets._edit().reemplazarPisos(idRegistro: widget.idRegistro, pisos: pisos);
+      if (mounted) Navigator.pop(context, true);
+    } catch (e) {
+      if (mounted) AdminEditSheets.showError(context, e);
+    } finally {
+      if (mounted) setState(() => _guardando = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final titulo = widget.esDepartamento
+        ? (_editando ? 'Editar piso del departamento' : 'Registrar piso del departamento')
+        : (_editando ? 'Editar material del piso' : 'Agregar piso');
+
+    return AlertDialog(
+      title: Text(titulo),
+      content: SizedBox(
+        width: 420,
+        child: _loading
+            ? const Center(child: CircularProgressIndicator())
+            : Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (widget.esDepartamento) ...[
+                    const Text(
+                      'Indica el piso donde está la unidad (ej. Piso 22) y el material registrado.',
+                      style: TextStyle(fontSize: 12, color: AdminTheme.mutedText),
+                    ),
+                    const SizedBox(height: 12),
+                    InputDecorator(
+                      decoration: const InputDecoration(
+                        labelText: 'Número de piso',
+                        border: OutlineInputBorder(),
+                      ),
+                      child: DropdownButtonHideUnderline(
+                        child: DropdownButton<int>(
+                          isExpanded: true,
+                          value: _numeropDepto,
+                          hint: const Text('Selecciona'),
+                          items: List.generate(
+                            _numerosPisoDepartamento,
+                            (i) => DropdownMenuItem(value: i + 1, child: Text('Piso ${i + 1}')),
+                          ),
+                          onChanged: (v) => setState(() => _numeropDepto = v),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                  ] else if (_editando) ...[
+                    Text(
+                      'Piso ${widget.piso!.numerop}',
+                      style: const TextStyle(fontWeight: FontWeight.w600),
+                    ),
+                    const SizedBox(height: 12),
+                  ],
+                  _dropdown(
+                    'Material del piso',
+                    _idMatPiso,
+                    _matsPiso,
+                    (v) => setState(() => _idMatPiso = v),
                   ),
                 ],
               ),

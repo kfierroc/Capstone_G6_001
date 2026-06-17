@@ -5,7 +5,6 @@ import '../../models/grupo_familiar_list_item.dart';
 import '../../services/grupo_familiar_service.dart';
 import '../../theme/admin_theme.dart';
 import '../../widgets/admin_action_bar.dart';
-import '../../widgets/admin_edit_sheets.dart';
 import '../../widgets/admin_header.dart';
 import '../residencias/residencia_edit_screen.dart';
 import 'grupo_familiar_detail_screen.dart';
@@ -146,15 +145,6 @@ class _GrupoFamiliarListScreenState extends State<GrupoFamiliarListScreen> {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$accion — próximamente.')));
   }
 
-  Future<void> _editarTelefonoLista(GrupoFamiliarListItem g) async {
-    final ok = await AdminEditSheets.editarTelefonoGrupo(
-      context,
-      idGrupof: g.idGrupof,
-      telefonoActual: g.telefono,
-    );
-    if (ok == true) _cargar();
-  }
-
   List<GrupoFamiliarListItem> get _filtrados {
     final q = _busquedaController.text.trim();
     return _grupos.where((g) => g.coincideConBusqueda(q)).toList();
@@ -238,13 +228,11 @@ class _GrupoFamiliarListScreenState extends State<GrupoFamiliarListScreen> {
                               ? _TablaDesktop(
                                   grupos: filtrados,
                                   onVerDetalle: widget.onVerDetalle,
-                                  onEditar: _editarTelefonoLista,
                                   onEliminar: () => _proximamente('Eliminar'),
                                 )
                               : _ListaMobile(
                                   grupos: filtrados,
                                   onVerDetalle: widget.onVerDetalle,
-                                  onEditar: _editarTelefonoLista,
                                   onEliminar: () => _proximamente('Eliminar'),
                                 ),
                         ),
@@ -260,13 +248,11 @@ class _TablaDesktop extends StatelessWidget {
   const _TablaDesktop({
     required this.grupos,
     required this.onVerDetalle,
-    required this.onEditar,
     required this.onEliminar,
   });
 
   final List<GrupoFamiliarListItem> grupos;
   final ValueChanged<int> onVerDetalle;
-  final ValueChanged<GrupoFamiliarListItem> onEditar;
   final VoidCallback onEliminar;
 
   static const _headerStyle = TextStyle(
@@ -289,7 +275,7 @@ class _TablaDesktop extends StatelessWidget {
               Expanded(flex: 2, child: Text('TELÉFONO', style: _headerStyle)),
               Expanded(flex: 3, child: Text('DIRECCIÓN', style: _headerStyle)),
               Expanded(flex: 2, child: Text('FECHA REGISTRO', style: _headerStyle)),
-              SizedBox(width: 260, child: Text('ACCIONES', style: _headerStyle)),
+              SizedBox(width: 180, child: Text('ACCIONES', style: _headerStyle)),
             ],
           ),
         ),
@@ -297,7 +283,6 @@ class _TablaDesktop extends StatelessWidget {
         ...grupos.map((g) => _FilaDesktop(
               grupo: g,
               onVerDetalle: () => onVerDetalle(g.idGrupof),
-              onEditar: onEditar,
               onEliminar: onEliminar,
             )),
       ],
@@ -309,13 +294,11 @@ class _FilaDesktop extends StatelessWidget {
   const _FilaDesktop({
     required this.grupo,
     required this.onVerDetalle,
-    required this.onEditar,
     required this.onEliminar,
   });
 
   final GrupoFamiliarListItem grupo;
   final VoidCallback onVerDetalle;
-  final ValueChanged<GrupoFamiliarListItem> onEditar;
   final VoidCallback onEliminar;
 
   @override
@@ -333,13 +316,12 @@ class _FilaDesktop extends StatelessWidget {
               Expanded(flex: 3, child: Text(grupo.direccion, style: _cellStyle)),
               Expanded(flex: 2, child: Text(grupo.fechaRegistro, style: _cellStyle)),
               SizedBox(
-                width: 260,
+                width: 180,
                 child: Wrap(
                   spacing: 8,
                   runSpacing: 8,
                   children: [
                     AdminOutlineButton(label: 'Ver Detalle', onPressed: onVerDetalle),
-                    AdminOutlineButton(label: 'Editar', onPressed: () => onEditar(grupo)),
                     AdminDangerButton(label: 'Eliminar', onPressed: onEliminar),
                   ],
                 ),
@@ -387,13 +369,11 @@ class _ListaMobile extends StatelessWidget {
   const _ListaMobile({
     required this.grupos,
     required this.onVerDetalle,
-    required this.onEditar,
     required this.onEliminar,
   });
 
   final List<GrupoFamiliarListItem> grupos;
   final ValueChanged<int> onVerDetalle;
-  final ValueChanged<GrupoFamiliarListItem> onEditar;
   final VoidCallback onEliminar;
 
   @override
@@ -431,7 +411,6 @@ class _ListaMobile extends StatelessWidget {
                 runSpacing: 8,
                 children: [
                   AdminOutlineButton(label: 'Ver Detalle', onPressed: () => onVerDetalle(g.idGrupof)),
-                  AdminOutlineButton(label: 'Editar', onPressed: () => onEditar(g)),
                   AdminDangerButton(label: 'Eliminar', onPressed: onEliminar),
                 ],
               ),
