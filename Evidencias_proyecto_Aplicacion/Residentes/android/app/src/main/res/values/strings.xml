@@ -1,4 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<resources>
-    <!-- google_maps_api_key se genera en build.gradle.kts (resValue) desde .env o local.properties -->
-</resources>
