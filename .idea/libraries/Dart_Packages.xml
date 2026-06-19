@@ -5,6 +5,7 @@
         <entry key="app_links">
           <value>
             <list>
+              <option value="C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/app_links-7.0.0/lib" />
               <option value="$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/app_links-7.0.0/lib" />
             </list>
           </value>
@@ -12,6 +13,7 @@
         <entry key="app_links_linux">
           <value>
             <list>
+              <option value="C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/app_links_linux-1.0.3/lib" />
               <option value="$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/app_links_linux-1.0.3/lib" />
             </list>
           </value>
@@ -19,6 +21,7 @@
         <entry key="app_links_platform_interface">
           <value>
             <list>
+              <option value="C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/app_links_platform_interface-2.0.2/lib" />
               <option value="$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/app_links_platform_interface-2.0.2/lib" />
             </list>
           </value>
@@ -26,6 +29,7 @@
         <entry key="app_links_web">
           <value>
             <list>
+              <option value="C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/app_links_web-1.0.4/lib" />
               <option value="$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/app_links_web-1.0.4/lib" />
             </list>
           </value>
@@ -33,6 +37,7 @@
         <entry key="args">
           <value>
             <list>
+              <option value="C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/args-2.7.0/lib" />
               <option value="$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/args-2.7.0/lib" />
             </list>
           </value>
@@ -40,6 +45,7 @@
         <entry key="async">
           <value>
             <list>
+              <option value="C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/async-2.13.1/lib" />
               <option value="$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/async-2.13.1/lib" />
             </list>
           </value>
@@ -47,6 +53,7 @@
         <entry key="boolean_selector">
           <value>
             <list>
+              <option value="C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/boolean_selector-2.1.2/lib" />
               <option value="$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/boolean_selector-2.1.2/lib" />
             </list>
           </value>
@@ -54,6 +61,7 @@
         <entry key="characters">
           <value>
             <list>
+              <option value="C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/characters-1.4.1/lib" />
               <option value="$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/characters-1.4.1/lib" />
             </list>
           </value>
@@ -61,6 +69,7 @@
         <entry key="clock">
           <value>
             <list>
+              <option value="C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/clock-1.1.2/lib" />
               <option value="$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/clock-1.1.2/lib" />
             </list>
           </value>
@@ -68,6 +77,7 @@
         <entry key="code_assets">
           <value>
             <list>
+              <option value="C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/code_assets-1.0.0/lib" />
               <option value="$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/code_assets-1.0.0/lib" />
             </list>
           </value>
@@ -75,6 +85,7 @@
         <entry key="collection">
           <value>
             <list>
+              <option value="C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/collection-1.19.1/lib" />
               <option value="$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/collection-1.19.1/lib" />
             </list>
           </value>
@@ -82,6 +93,7 @@
         <entry key="convert">
           <value>
             <list>
+              <option value="C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/convert-3.1.2/lib" />
               <option value="$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/convert-3.1.2/lib" />
             </list>
           </value>
@@ -89,6 +101,7 @@
         <entry key="crypto">
           <value>
             <list>
+              <option value="C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/crypto-3.0.7/lib" />
               <option value="$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/crypto-3.0.7/lib" />
             </list>
           </value>
@@ -96,6 +109,7 @@
         <entry key="csslib">
           <value>
             <list>
+              <option value="C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/csslib-1.0.2/lib" />
               <option value="$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/csslib-1.0.2/lib" />
             </list>
           </value>
@@ -103,6 +117,7 @@
         <entry key="cupertino_icons">
           <value>
             <list>
+              <option value="C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/cupertino_icons-1.0.9/lib" />
               <option value="$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/cupertino_icons-1.0.9/lib" />
             </list>
           </value>
@@ -110,13 +125,22 @@
         <entry key="dart_jsonwebtoken">
           <value>
             <list>
+              <option value="C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/dart_jsonwebtoken-3.4.1/lib" />
               <option value="$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/dart_jsonwebtoken-3.4.1/lib" />
+            </list>
+          </value>
+        </entry>
+        <entry key="dbus">
+          <value>
+            <list>
+              <option value="$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/dbus-0.7.12/lib" />
             </list>
           </value>
         </entry>
         <entry key="fake_async">
           <value>
             <list>
+              <option value="C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/fake_async-1.3.3/lib" />
               <option value="$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/fake_async-1.3.3/lib" />
             </list>
           </value>
@@ -124,6 +148,7 @@
         <entry key="ffi">
           <value>
             <list>
+              <option value="C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/ffi-2.2.0/lib" />
               <option value="$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/ffi-2.2.0/lib" />
             </list>
           </value>
@@ -131,13 +156,22 @@
         <entry key="file">
           <value>
             <list>
+              <option value="C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/file-7.0.1/lib" />
               <option value="$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/file-7.0.1/lib" />
+            </list>
+          </value>
+        </entry>
+        <entry key="fixnum">
+          <value>
+            <list>
+              <option value="C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/fixnum-1.1.1/lib" />
             </list>
           </value>
         </entry>
         <entry key="flutter">
           <value>
             <list>
+              <option value="C:/Users/kevin/dev/flutter/packages/flutter/lib" />
               <option value="$USER_HOME$/DEV/flutter/packages/flutter/lib" />
             </list>
           </value>
@@ -145,6 +179,7 @@
         <entry key="flutter_dotenv">
           <value>
             <list>
+              <option value="C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/flutter_dotenv-6.0.1/lib" />
               <option value="$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/flutter_dotenv-6.0.1/lib" />
             </list>
           </value>
@@ -152,13 +187,36 @@
         <entry key="flutter_lints">
           <value>
             <list>
+              <option value="C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/flutter_lints-6.0.0/lib" />
               <option value="$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/flutter_lints-6.0.0/lib" />
+            </list>
+          </value>
+        </entry>
+        <entry key="flutter_local_notifications">
+          <value>
+            <list>
+              <option value="$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/flutter_local_notifications-18.0.1/lib" />
+            </list>
+          </value>
+        </entry>
+        <entry key="flutter_local_notifications_linux">
+          <value>
+            <list>
+              <option value="$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/flutter_local_notifications_linux-5.0.0/lib" />
+            </list>
+          </value>
+        </entry>
+        <entry key="flutter_local_notifications_platform_interface">
+          <value>
+            <list>
+              <option value="$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/flutter_local_notifications_platform_interface-8.0.0/lib" />
             </list>
           </value>
         </entry>
         <entry key="flutter_plugin_android_lifecycle">
           <value>
             <list>
+              <option value="C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/flutter_plugin_android_lifecycle-2.0.34/lib" />
               <option value="$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/flutter_plugin_android_lifecycle-2.0.34/lib" />
             </list>
           </value>
@@ -166,6 +224,7 @@
         <entry key="flutter_test">
           <value>
             <list>
+              <option value="C:/Users/kevin/dev/flutter/packages/flutter_test/lib" />
               <option value="$USER_HOME$/DEV/flutter/packages/flutter_test/lib" />
             </list>
           </value>
@@ -173,6 +232,7 @@
         <entry key="flutter_web_plugins">
           <value>
             <list>
+              <option value="C:/Users/kevin/dev/flutter/packages/flutter_web_plugins/lib" />
               <option value="$USER_HOME$/DEV/flutter/packages/flutter_web_plugins/lib" />
             </list>
           </value>
@@ -180,13 +240,57 @@
         <entry key="functions_client">
           <value>
             <list>
+              <option value="C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/functions_client-2.5.0/lib" />
               <option value="$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/functions_client-2.5.0/lib" />
+            </list>
+          </value>
+        </entry>
+        <entry key="geolocator">
+          <value>
+            <list>
+              <option value="C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/geolocator-13.0.4/lib" />
+            </list>
+          </value>
+        </entry>
+        <entry key="geolocator_android">
+          <value>
+            <list>
+              <option value="C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/geolocator_android-4.6.2/lib" />
+            </list>
+          </value>
+        </entry>
+        <entry key="geolocator_apple">
+          <value>
+            <list>
+              <option value="C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/geolocator_apple-2.3.13/lib" />
+            </list>
+          </value>
+        </entry>
+        <entry key="geolocator_platform_interface">
+          <value>
+            <list>
+              <option value="C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/geolocator_platform_interface-4.2.6/lib" />
+            </list>
+          </value>
+        </entry>
+        <entry key="geolocator_web">
+          <value>
+            <list>
+              <option value="C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/geolocator_web-4.1.3/lib" />
+            </list>
+          </value>
+        </entry>
+        <entry key="geolocator_windows">
+          <value>
+            <list>
+              <option value="C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/geolocator_windows-0.2.5/lib" />
             </list>
           </value>
         </entry>
         <entry key="glob">
           <value>
             <list>
+              <option value="C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/glob-2.1.3/lib" />
               <option value="$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/glob-2.1.3/lib" />
             </list>
           </value>
@@ -194,6 +298,7 @@
         <entry key="google_maps">
           <value>
             <list>
+              <option value="C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/google_maps-8.2.0/lib" />
               <option value="$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/google_maps-8.2.0/lib" />
             </list>
           </value>
@@ -201,6 +306,7 @@
         <entry key="google_maps_flutter">
           <value>
             <list>
+              <option value="C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/google_maps_flutter-2.17.0/lib" />
               <option value="$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/google_maps_flutter-2.17.0/lib" />
             </list>
           </value>
@@ -208,6 +314,7 @@
         <entry key="google_maps_flutter_android">
           <value>
             <list>
+              <option value="C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/google_maps_flutter_android-2.19.8/lib" />
               <option value="$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/google_maps_flutter_android-2.19.8/lib" />
             </list>
           </value>
@@ -215,6 +322,7 @@
         <entry key="google_maps_flutter_ios">
           <value>
             <list>
+              <option value="C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/google_maps_flutter_ios-2.18.1/lib" />
               <option value="$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/google_maps_flutter_ios-2.18.1/lib" />
             </list>
           </value>
@@ -222,6 +330,7 @@
         <entry key="google_maps_flutter_platform_interface">
           <value>
             <list>
+              <option value="C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/google_maps_flutter_platform_interface-2.15.0/lib" />
               <option value="$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/google_maps_flutter_platform_interface-2.15.0/lib" />
             </list>
           </value>
@@ -229,6 +338,7 @@
         <entry key="google_maps_flutter_web">
           <value>
             <list>
+              <option value="C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/google_maps_flutter_web-0.6.2+1/lib" />
               <option value="$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/google_maps_flutter_web-0.6.2+1/lib" />
             </list>
           </value>
@@ -236,6 +346,7 @@
         <entry key="gotrue">
           <value>
             <list>
+              <option value="C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/gotrue-2.20.0/lib" />
               <option value="$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/gotrue-2.20.0/lib" />
             </list>
           </value>
@@ -243,14 +354,15 @@
         <entry key="gtk">
           <value>
             <list>
+              <option value="C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/gtk-2.2.0/lib" />
               <option value="$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/gtk-2.1.0/lib" />
-              <option value="$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/gtk-2.2.0/lib" />
             </list>
           </value>
         </entry>
         <entry key="hooks">
           <value>
             <list>
+              <option value="C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/hooks-1.0.3/lib" />
               <option value="$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/hooks-1.0.3/lib" />
             </list>
           </value>
@@ -258,6 +370,7 @@
         <entry key="html">
           <value>
             <list>
+              <option value="C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/html-0.15.6/lib" />
               <option value="$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/html-0.15.6/lib" />
             </list>
           </value>
@@ -265,6 +378,7 @@
         <entry key="http">
           <value>
             <list>
+              <option value="C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/http-1.6.0/lib" />
               <option value="$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/http-1.6.0/lib" />
             </list>
           </value>
@@ -272,6 +386,7 @@
         <entry key="http_parser">
           <value>
             <list>
+              <option value="C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/http_parser-4.1.2/lib" />
               <option value="$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/http_parser-4.1.2/lib" />
             </list>
           </value>
@@ -279,6 +394,7 @@
         <entry key="jni">
           <value>
             <list>
+              <option value="C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/jni-1.0.0/lib" />
               <option value="$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/jni-1.0.0/lib" />
             </list>
           </value>
@@ -286,6 +402,7 @@
         <entry key="jni_flutter">
           <value>
             <list>
+              <option value="C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/jni_flutter-1.0.1/lib" />
               <option value="$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/jni_flutter-1.0.1/lib" />
             </list>
           </value>
@@ -293,6 +410,7 @@
         <entry key="jwt_decode">
           <value>
             <list>
+              <option value="C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/jwt_decode-0.3.1/lib" />
               <option value="$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/jwt_decode-0.3.1/lib" />
             </list>
           </value>
@@ -300,6 +418,7 @@
         <entry key="leak_tracker">
           <value>
             <list>
+              <option value="C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/leak_tracker-11.0.2/lib" />
               <option value="$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/leak_tracker-11.0.2/lib" />
             </list>
           </value>
@@ -307,6 +426,7 @@
         <entry key="leak_tracker_flutter_testing">
           <value>
             <list>
+              <option value="C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/leak_tracker_flutter_testing-3.0.10/lib" />
               <option value="$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/leak_tracker_flutter_testing-3.0.10/lib" />
             </list>
           </value>
@@ -314,6 +434,7 @@
         <entry key="leak_tracker_testing">
           <value>
             <list>
+              <option value="C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/leak_tracker_testing-3.0.2/lib" />
               <option value="$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/leak_tracker_testing-3.0.2/lib" />
             </list>
           </value>
@@ -321,6 +442,7 @@
         <entry key="lints">
           <value>
             <list>
+              <option value="C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/lints-6.1.0/lib" />
               <option value="$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/lints-6.1.0/lib" />
             </list>
           </value>
@@ -328,6 +450,7 @@
         <entry key="logging">
           <value>
             <list>
+              <option value="C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/logging-1.3.0/lib" />
               <option value="$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/logging-1.3.0/lib" />
             </list>
           </value>
@@ -335,6 +458,7 @@
         <entry key="matcher">
           <value>
             <list>
+              <option value="C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/matcher-0.12.19/lib" />
               <option value="$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/matcher-0.12.19/lib" />
             </list>
           </value>
@@ -342,6 +466,7 @@
         <entry key="material_color_utilities">
           <value>
             <list>
+              <option value="C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/material_color_utilities-0.13.0/lib" />
               <option value="$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/material_color_utilities-0.13.0/lib" />
             </list>
           </value>
@@ -349,6 +474,7 @@
         <entry key="meta">
           <value>
             <list>
+              <option value="C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/meta-1.17.0/lib" />
               <option value="$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/meta-1.17.0/lib" />
             </list>
           </value>
@@ -356,6 +482,7 @@
         <entry key="mime">
           <value>
             <list>
+              <option value="C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/mime-2.0.0/lib" />
               <option value="$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/mime-2.0.0/lib" />
             </list>
           </value>
@@ -363,6 +490,7 @@
         <entry key="native_toolchain_c">
           <value>
             <list>
+              <option value="C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/native_toolchain_c-0.17.6/lib" />
               <option value="$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/native_toolchain_c-0.17.6/lib" />
             </list>
           </value>
@@ -370,6 +498,7 @@
         <entry key="objective_c">
           <value>
             <list>
+              <option value="C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/objective_c-9.3.0/lib" />
               <option value="$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/objective_c-9.3.0/lib" />
             </list>
           </value>
@@ -377,6 +506,7 @@
         <entry key="package_config">
           <value>
             <list>
+              <option value="C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/package_config-2.2.0/lib" />
               <option value="$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/package_config-2.2.0/lib" />
             </list>
           </value>
@@ -384,6 +514,7 @@
         <entry key="path">
           <value>
             <list>
+              <option value="C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/path-1.9.1/lib" />
               <option value="$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/path-1.9.1/lib" />
             </list>
           </value>
@@ -391,6 +522,7 @@
         <entry key="path_provider">
           <value>
             <list>
+              <option value="C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/path_provider-2.1.5/lib" />
               <option value="$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/path_provider-2.1.5/lib" />
             </list>
           </value>
@@ -398,6 +530,7 @@
         <entry key="path_provider_android">
           <value>
             <list>
+              <option value="C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/path_provider_android-2.3.1/lib" />
               <option value="$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/path_provider_android-2.3.1/lib" />
             </list>
           </value>
@@ -405,6 +538,7 @@
         <entry key="path_provider_foundation">
           <value>
             <list>
+              <option value="C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/path_provider_foundation-2.6.0/lib" />
               <option value="$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/path_provider_foundation-2.6.0/lib" />
             </list>
           </value>
@@ -412,6 +546,7 @@
         <entry key="path_provider_linux">
           <value>
             <list>
+              <option value="C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/path_provider_linux-2.2.1/lib" />
               <option value="$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/path_provider_linux-2.2.1/lib" />
             </list>
           </value>
@@ -419,6 +554,7 @@
         <entry key="path_provider_platform_interface">
           <value>
             <list>
+              <option value="C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/path_provider_platform_interface-2.1.2/lib" />
               <option value="$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/path_provider_platform_interface-2.1.2/lib" />
             </list>
           </value>
@@ -426,13 +562,22 @@
         <entry key="path_provider_windows">
           <value>
             <list>
+              <option value="C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/path_provider_windows-2.3.0/lib" />
               <option value="$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/path_provider_windows-2.3.0/lib" />
+            </list>
+          </value>
+        </entry>
+        <entry key="petitparser">
+          <value>
+            <list>
+              <option value="$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/petitparser-7.0.2/lib" />
             </list>
           </value>
         </entry>
         <entry key="platform">
           <value>
             <list>
+              <option value="C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/platform-3.1.6/lib" />
               <option value="$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/platform-3.1.6/lib" />
             </list>
           </value>
@@ -440,6 +585,7 @@
         <entry key="plugin_platform_interface">
           <value>
             <list>
+              <option value="C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/plugin_platform_interface-2.1.8/lib" />
               <option value="$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/plugin_platform_interface-2.1.8/lib" />
             </list>
           </value>
@@ -447,6 +593,7 @@
         <entry key="pointycastle">
           <value>
             <list>
+              <option value="C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/pointycastle-4.0.0/lib" />
               <option value="$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/pointycastle-4.0.0/lib" />
             </list>
           </value>
@@ -454,6 +601,7 @@
         <entry key="postgrest">
           <value>
             <list>
+              <option value="C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/postgrest-2.7.0/lib" />
               <option value="$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/postgrest-2.7.0/lib" />
             </list>
           </value>
@@ -461,6 +609,7 @@
         <entry key="pub_semver">
           <value>
             <list>
+              <option value="C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/pub_semver-2.2.0/lib" />
               <option value="$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/pub_semver-2.2.0/lib" />
             </list>
           </value>
@@ -468,6 +617,7 @@
         <entry key="realtime_client">
           <value>
             <list>
+              <option value="C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/realtime_client-2.7.3/lib" />
               <option value="$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/realtime_client-2.7.3/lib" />
             </list>
           </value>
@@ -475,6 +625,7 @@
         <entry key="record_use">
           <value>
             <list>
+              <option value="C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/record_use-0.6.0/lib" />
               <option value="$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/record_use-0.6.0/lib" />
             </list>
           </value>
@@ -482,6 +633,7 @@
         <entry key="retry">
           <value>
             <list>
+              <option value="C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/retry-3.1.2/lib" />
               <option value="$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/retry-3.1.2/lib" />
             </list>
           </value>
@@ -489,6 +641,7 @@
         <entry key="rxdart">
           <value>
             <list>
+              <option value="C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/rxdart-0.28.0/lib" />
               <option value="$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/rxdart-0.28.0/lib" />
             </list>
           </value>
@@ -496,6 +649,7 @@
         <entry key="sanitize_html">
           <value>
             <list>
+              <option value="C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/sanitize_html-2.1.0/lib" />
               <option value="$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/sanitize_html-2.1.0/lib" />
             </list>
           </value>
@@ -503,6 +657,7 @@
         <entry key="shared_preferences">
           <value>
             <list>
+              <option value="C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/shared_preferences-2.5.5/lib" />
               <option value="$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/shared_preferences-2.5.5/lib" />
             </list>
           </value>
@@ -510,6 +665,7 @@
         <entry key="shared_preferences_android">
           <value>
             <list>
+              <option value="C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/shared_preferences_android-2.4.23/lib" />
               <option value="$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/shared_preferences_android-2.4.23/lib" />
             </list>
           </value>
@@ -517,6 +673,7 @@
         <entry key="shared_preferences_foundation">
           <value>
             <list>
+              <option value="C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/shared_preferences_foundation-2.5.6/lib" />
               <option value="$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/shared_preferences_foundation-2.5.6/lib" />
             </list>
           </value>
@@ -524,6 +681,7 @@
         <entry key="shared_preferences_linux">
           <value>
             <list>
+              <option value="C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/shared_preferences_linux-2.4.1/lib" />
               <option value="$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/shared_preferences_linux-2.4.1/lib" />
             </list>
           </value>
@@ -531,6 +689,7 @@
         <entry key="shared_preferences_platform_interface">
           <value>
             <list>
+              <option value="C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/shared_preferences_platform_interface-2.4.2/lib" />
               <option value="$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/shared_preferences_platform_interface-2.4.2/lib" />
             </list>
           </value>
@@ -538,6 +697,7 @@
         <entry key="shared_preferences_web">
           <value>
             <list>
+              <option value="C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/shared_preferences_web-2.4.3/lib" />
               <option value="$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/shared_preferences_web-2.4.3/lib" />
             </list>
           </value>
@@ -545,6 +705,7 @@
         <entry key="shared_preferences_windows">
           <value>
             <list>
+              <option value="C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/shared_preferences_windows-2.4.1/lib" />
               <option value="$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/shared_preferences_windows-2.4.1/lib" />
             </list>
           </value>
@@ -552,6 +713,7 @@
         <entry key="sky_engine">
           <value>
             <list>
+              <option value="C:/Users/kevin/dev/flutter/bin/cache/pkg/sky_engine/lib" />
               <option value="$USER_HOME$/DEV/flutter/bin/cache/pkg/sky_engine/lib" />
             </list>
           </value>
@@ -559,6 +721,7 @@
         <entry key="source_span">
           <value>
             <list>
+              <option value="C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/source_span-1.10.2/lib" />
               <option value="$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/source_span-1.10.2/lib" />
             </list>
           </value>
@@ -566,6 +729,7 @@
         <entry key="stack_trace">
           <value>
             <list>
+              <option value="C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/stack_trace-1.12.1/lib" />
               <option value="$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/stack_trace-1.12.1/lib" />
             </list>
           </value>
@@ -573,6 +737,7 @@
         <entry key="storage_client">
           <value>
             <list>
+              <option value="C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/storage_client-2.5.2/lib" />
               <option value="$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/storage_client-2.5.2/lib" />
             </list>
           </value>
@@ -580,6 +745,7 @@
         <entry key="stream_channel">
           <value>
             <list>
+              <option value="C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/stream_channel-2.1.4/lib" />
               <option value="$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/stream_channel-2.1.4/lib" />
             </list>
           </value>
@@ -587,6 +753,7 @@
         <entry key="stream_transform">
           <value>
             <list>
+              <option value="C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/stream_transform-2.1.1/lib" />
               <option value="$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/stream_transform-2.1.1/lib" />
             </list>
           </value>
@@ -594,6 +761,7 @@
         <entry key="string_scanner">
           <value>
             <list>
+              <option value="C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/string_scanner-1.4.1/lib" />
               <option value="$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/string_scanner-1.4.1/lib" />
             </list>
           </value>
@@ -601,6 +769,7 @@
         <entry key="supabase">
           <value>
             <list>
+              <option value="C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/supabase-2.10.6/lib" />
               <option value="$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/supabase-2.10.6/lib" />
             </list>
           </value>
@@ -608,6 +777,7 @@
         <entry key="supabase_flutter">
           <value>
             <list>
+              <option value="C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/supabase_flutter-2.12.4/lib" />
               <option value="$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/supabase_flutter-2.12.4/lib" />
             </list>
           </value>
@@ -615,6 +785,7 @@
         <entry key="term_glyph">
           <value>
             <list>
+              <option value="C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/term_glyph-1.2.2/lib" />
               <option value="$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/term_glyph-1.2.2/lib" />
             </list>
           </value>
@@ -622,13 +793,22 @@
         <entry key="test_api">
           <value>
             <list>
+              <option value="C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/test_api-0.7.10/lib" />
               <option value="$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/test_api-0.7.10/lib" />
+            </list>
+          </value>
+        </entry>
+        <entry key="timezone">
+          <value>
+            <list>
+              <option value="$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/timezone-0.10.1/lib" />
             </list>
           </value>
         </entry>
         <entry key="typed_data">
           <value>
             <list>
+              <option value="C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/typed_data-1.4.0/lib" />
               <option value="$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/typed_data-1.4.0/lib" />
             </list>
           </value>
@@ -636,6 +816,7 @@
         <entry key="url_launcher">
           <value>
             <list>
+              <option value="C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/url_launcher-6.3.2/lib" />
               <option value="$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/url_launcher-6.3.2/lib" />
             </list>
           </value>
@@ -643,6 +824,7 @@
         <entry key="url_launcher_android">
           <value>
             <list>
+              <option value="C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/url_launcher_android-6.3.29/lib" />
               <option value="$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/url_launcher_android-6.3.29/lib" />
             </list>
           </value>
@@ -650,6 +832,7 @@
         <entry key="url_launcher_ios">
           <value>
             <list>
+              <option value="C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/url_launcher_ios-6.4.1/lib" />
               <option value="$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/url_launcher_ios-6.4.1/lib" />
             </list>
           </value>
@@ -657,6 +840,7 @@
         <entry key="url_launcher_linux">
           <value>
             <list>
+              <option value="C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/url_launcher_linux-3.2.2/lib" />
               <option value="$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/url_launcher_linux-3.2.2/lib" />
             </list>
           </value>
@@ -664,6 +848,7 @@
         <entry key="url_launcher_macos">
           <value>
             <list>
+              <option value="C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/url_launcher_macos-3.2.5/lib" />
               <option value="$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/url_launcher_macos-3.2.5/lib" />
             </list>
           </value>
@@ -671,6 +856,7 @@
         <entry key="url_launcher_platform_interface">
           <value>
             <list>
+              <option value="C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/url_launcher_platform_interface-2.3.2/lib" />
               <option value="$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/url_launcher_platform_interface-2.3.2/lib" />
             </list>
           </value>
@@ -678,21 +864,30 @@
         <entry key="url_launcher_web">
           <value>
             <list>
+              <option value="C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/url_launcher_web-2.4.3/lib" />
               <option value="$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/url_launcher_web-2.4.2/lib" />
-              <option value="$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/url_launcher_web-2.4.3/lib" />
             </list>
           </value>
         </entry>
         <entry key="url_launcher_windows">
           <value>
             <list>
+              <option value="C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/url_launcher_windows-3.1.5/lib" />
               <option value="$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/url_launcher_windows-3.1.5/lib" />
+            </list>
+          </value>
+        </entry>
+        <entry key="uuid">
+          <value>
+            <list>
+              <option value="C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/uuid-4.5.3/lib" />
             </list>
           </value>
         </entry>
         <entry key="vector_math">
           <value>
             <list>
+              <option value="C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/vector_math-2.2.0/lib" />
               <option value="$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/vector_math-2.2.0/lib" />
             </list>
           </value>
@@ -700,6 +895,7 @@
         <entry key="vm_service">
           <value>
             <list>
+              <option value="C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/vm_service-15.2.0/lib" />
               <option value="$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/vm_service-15.2.0/lib" />
             </list>
           </value>
@@ -707,6 +903,7 @@
         <entry key="web">
           <value>
             <list>
+              <option value="C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/web-1.1.1/lib" />
               <option value="$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/web-1.1.1/lib" />
             </list>
           </value>
@@ -714,6 +911,7 @@
         <entry key="web_socket">
           <value>
             <list>
+              <option value="C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/web_socket-1.0.1/lib" />
               <option value="$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/web_socket-1.0.1/lib" />
             </list>
           </value>
@@ -721,6 +919,7 @@
         <entry key="web_socket_channel">
           <value>
             <list>
+              <option value="C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/web_socket_channel-3.0.3/lib" />
               <option value="$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/web_socket_channel-3.0.3/lib" />
             </list>
           </value>
@@ -728,13 +927,22 @@
         <entry key="xdg_directories">
           <value>
             <list>
+              <option value="C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/xdg_directories-1.1.0/lib" />
               <option value="$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/xdg_directories-1.1.0/lib" />
+            </list>
+          </value>
+        </entry>
+        <entry key="xml">
+          <value>
+            <list>
+              <option value="$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/xml-6.6.1/lib" />
             </list>
           </value>
         </entry>
         <entry key="yaml">
           <value>
             <list>
+              <option value="C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/yaml-3.1.3/lib" />
               <option value="$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/yaml-3.1.3/lib" />
             </list>
           </value>
@@ -742,6 +950,7 @@
         <entry key="yet_another_json_isolate">
           <value>
             <list>
+              <option value="C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/yet_another_json_isolate-2.1.0/lib" />
               <option value="$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/yet_another_json_isolate-2.1.0/lib" />
             </list>
           </value>
@@ -765,11 +974,15 @@
       <root url="file://$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/csslib-1.0.2/lib" />
       <root url="file://$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/cupertino_icons-1.0.9/lib" />
       <root url="file://$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/dart_jsonwebtoken-3.4.1/lib" />
+      <root url="file://$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/dbus-0.7.12/lib" />
       <root url="file://$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/fake_async-1.3.3/lib" />
       <root url="file://$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/ffi-2.2.0/lib" />
       <root url="file://$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/file-7.0.1/lib" />
       <root url="file://$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/flutter_dotenv-6.0.1/lib" />
       <root url="file://$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/flutter_lints-6.0.0/lib" />
+      <root url="file://$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/flutter_local_notifications-18.0.1/lib" />
+      <root url="file://$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/flutter_local_notifications_linux-5.0.0/lib" />
+      <root url="file://$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/flutter_local_notifications_platform_interface-8.0.0/lib" />
       <root url="file://$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/flutter_plugin_android_lifecycle-2.0.34/lib" />
       <root url="file://$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/functions_client-2.5.0/lib" />
       <root url="file://$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/glob-2.1.3/lib" />
@@ -781,7 +994,6 @@
       <root url="file://$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/google_maps_flutter_web-0.6.2+1/lib" />
       <root url="file://$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/gotrue-2.20.0/lib" />
       <root url="file://$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/gtk-2.1.0/lib" />
-      <root url="file://$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/gtk-2.2.0/lib" />
       <root url="file://$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/hooks-1.0.3/lib" />
       <root url="file://$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/html-0.15.6/lib" />
       <root url="file://$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/http-1.6.0/lib" />
@@ -808,6 +1020,7 @@
       <root url="file://$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/path_provider_linux-2.2.1/lib" />
       <root url="file://$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/path_provider_platform_interface-2.1.2/lib" />
       <root url="file://$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/path_provider_windows-2.3.0/lib" />
+      <root url="file://$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/petitparser-7.0.2/lib" />
       <root url="file://$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/platform-3.1.6/lib" />
       <root url="file://$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/plugin_platform_interface-2.1.8/lib" />
       <root url="file://$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/pointycastle-4.0.0/lib" />
@@ -835,6 +1048,7 @@
       <root url="file://$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/supabase_flutter-2.12.4/lib" />
       <root url="file://$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/term_glyph-1.2.2/lib" />
       <root url="file://$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/test_api-0.7.10/lib" />
+      <root url="file://$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/timezone-0.10.1/lib" />
       <root url="file://$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/typed_data-1.4.0/lib" />
       <root url="file://$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/url_launcher-6.3.2/lib" />
       <root url="file://$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/url_launcher_android-6.3.29/lib" />
@@ -843,7 +1057,6 @@
       <root url="file://$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/url_launcher_macos-3.2.5/lib" />
       <root url="file://$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/url_launcher_platform_interface-2.3.2/lib" />
       <root url="file://$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/url_launcher_web-2.4.2/lib" />
-      <root url="file://$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/url_launcher_web-2.4.3/lib" />
       <root url="file://$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/url_launcher_windows-3.1.5/lib" />
       <root url="file://$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/vector_math-2.2.0/lib" />
       <root url="file://$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/vm_service-15.2.0/lib" />
@@ -851,12 +1064,127 @@
       <root url="file://$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/web_socket-1.0.1/lib" />
       <root url="file://$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/web_socket_channel-3.0.3/lib" />
       <root url="file://$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/xdg_directories-1.1.0/lib" />
+      <root url="file://$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/xml-6.6.1/lib" />
       <root url="file://$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/yaml-3.1.3/lib" />
       <root url="file://$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/yet_another_json_isolate-2.1.0/lib" />
       <root url="file://$USER_HOME$/DEV/flutter/bin/cache/pkg/sky_engine/lib" />
       <root url="file://$USER_HOME$/DEV/flutter/packages/flutter/lib" />
       <root url="file://$USER_HOME$/DEV/flutter/packages/flutter_test/lib" />
       <root url="file://$USER_HOME$/DEV/flutter/packages/flutter_web_plugins/lib" />
+      <root url="file://C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/app_links-7.0.0/lib" />
+      <root url="file://C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/app_links_linux-1.0.3/lib" />
+      <root url="file://C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/app_links_platform_interface-2.0.2/lib" />
+      <root url="file://C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/app_links_web-1.0.4/lib" />
+      <root url="file://C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/args-2.7.0/lib" />
+      <root url="file://C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/async-2.13.1/lib" />
+      <root url="file://C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/boolean_selector-2.1.2/lib" />
+      <root url="file://C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/characters-1.4.1/lib" />
+      <root url="file://C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/clock-1.1.2/lib" />
+      <root url="file://C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/code_assets-1.0.0/lib" />
+      <root url="file://C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/collection-1.19.1/lib" />
+      <root url="file://C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/convert-3.1.2/lib" />
+      <root url="file://C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/crypto-3.0.7/lib" />
+      <root url="file://C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/csslib-1.0.2/lib" />
+      <root url="file://C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/cupertino_icons-1.0.9/lib" />
+      <root url="file://C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/dart_jsonwebtoken-3.4.1/lib" />
+      <root url="file://C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/fake_async-1.3.3/lib" />
+      <root url="file://C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/ffi-2.2.0/lib" />
+      <root url="file://C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/file-7.0.1/lib" />
+      <root url="file://C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/fixnum-1.1.1/lib" />
+      <root url="file://C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/flutter_dotenv-6.0.1/lib" />
+      <root url="file://C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/flutter_lints-6.0.0/lib" />
+      <root url="file://C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/flutter_plugin_android_lifecycle-2.0.34/lib" />
+      <root url="file://C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/functions_client-2.5.0/lib" />
+      <root url="file://C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/geolocator-13.0.4/lib" />
+      <root url="file://C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/geolocator_android-4.6.2/lib" />
+      <root url="file://C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/geolocator_apple-2.3.13/lib" />
+      <root url="file://C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/geolocator_platform_interface-4.2.6/lib" />
+      <root url="file://C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/geolocator_web-4.1.3/lib" />
+      <root url="file://C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/geolocator_windows-0.2.5/lib" />
+      <root url="file://C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/glob-2.1.3/lib" />
+      <root url="file://C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/google_maps-8.2.0/lib" />
+      <root url="file://C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/google_maps_flutter-2.17.0/lib" />
+      <root url="file://C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/google_maps_flutter_android-2.19.8/lib" />
+      <root url="file://C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/google_maps_flutter_ios-2.18.1/lib" />
+      <root url="file://C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/google_maps_flutter_platform_interface-2.15.0/lib" />
+      <root url="file://C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/google_maps_flutter_web-0.6.2+1/lib" />
+      <root url="file://C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/gotrue-2.20.0/lib" />
+      <root url="file://C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/gtk-2.2.0/lib" />
+      <root url="file://C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/hooks-1.0.3/lib" />
+      <root url="file://C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/html-0.15.6/lib" />
+      <root url="file://C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/http-1.6.0/lib" />
+      <root url="file://C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/http_parser-4.1.2/lib" />
+      <root url="file://C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/jni-1.0.0/lib" />
+      <root url="file://C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/jni_flutter-1.0.1/lib" />
+      <root url="file://C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/jwt_decode-0.3.1/lib" />
+      <root url="file://C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/leak_tracker-11.0.2/lib" />
+      <root url="file://C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/leak_tracker_flutter_testing-3.0.10/lib" />
+      <root url="file://C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/leak_tracker_testing-3.0.2/lib" />
+      <root url="file://C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/lints-6.1.0/lib" />
+      <root url="file://C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/logging-1.3.0/lib" />
+      <root url="file://C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/matcher-0.12.19/lib" />
+      <root url="file://C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/material_color_utilities-0.13.0/lib" />
+      <root url="file://C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/meta-1.17.0/lib" />
+      <root url="file://C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/mime-2.0.0/lib" />
+      <root url="file://C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/native_toolchain_c-0.17.6/lib" />
+      <root url="file://C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/objective_c-9.3.0/lib" />
+      <root url="file://C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/package_config-2.2.0/lib" />
+      <root url="file://C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/path-1.9.1/lib" />
+      <root url="file://C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/path_provider-2.1.5/lib" />
+      <root url="file://C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/path_provider_android-2.3.1/lib" />
+      <root url="file://C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/path_provider_foundation-2.6.0/lib" />
+      <root url="file://C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/path_provider_linux-2.2.1/lib" />
+      <root url="file://C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/path_provider_platform_interface-2.1.2/lib" />
+      <root url="file://C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/path_provider_windows-2.3.0/lib" />
+      <root url="file://C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/platform-3.1.6/lib" />
+      <root url="file://C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/plugin_platform_interface-2.1.8/lib" />
+      <root url="file://C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/pointycastle-4.0.0/lib" />
+      <root url="file://C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/postgrest-2.7.0/lib" />
+      <root url="file://C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/pub_semver-2.2.0/lib" />
+      <root url="file://C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/realtime_client-2.7.3/lib" />
+      <root url="file://C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/record_use-0.6.0/lib" />
+      <root url="file://C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/retry-3.1.2/lib" />
+      <root url="file://C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/rxdart-0.28.0/lib" />
+      <root url="file://C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/sanitize_html-2.1.0/lib" />
+      <root url="file://C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/shared_preferences-2.5.5/lib" />
+      <root url="file://C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/shared_preferences_android-2.4.23/lib" />
+      <root url="file://C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/shared_preferences_foundation-2.5.6/lib" />
+      <root url="file://C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/shared_preferences_linux-2.4.1/lib" />
+      <root url="file://C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/shared_preferences_platform_interface-2.4.2/lib" />
+      <root url="file://C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/shared_preferences_web-2.4.3/lib" />
+      <root url="file://C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/shared_preferences_windows-2.4.1/lib" />
+      <root url="file://C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/source_span-1.10.2/lib" />
+      <root url="file://C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/stack_trace-1.12.1/lib" />
+      <root url="file://C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/storage_client-2.5.2/lib" />
+      <root url="file://C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/stream_channel-2.1.4/lib" />
+      <root url="file://C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/stream_transform-2.1.1/lib" />
+      <root url="file://C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/string_scanner-1.4.1/lib" />
+      <root url="file://C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/supabase-2.10.6/lib" />
+      <root url="file://C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/supabase_flutter-2.12.4/lib" />
+      <root url="file://C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/term_glyph-1.2.2/lib" />
+      <root url="file://C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/test_api-0.7.10/lib" />
+      <root url="file://C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/typed_data-1.4.0/lib" />
+      <root url="file://C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/url_launcher-6.3.2/lib" />
+      <root url="file://C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/url_launcher_android-6.3.29/lib" />
+      <root url="file://C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/url_launcher_ios-6.4.1/lib" />
+      <root url="file://C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/url_launcher_linux-3.2.2/lib" />
+      <root url="file://C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/url_launcher_macos-3.2.5/lib" />
+      <root url="file://C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/url_launcher_platform_interface-2.3.2/lib" />
+      <root url="file://C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/url_launcher_web-2.4.3/lib" />
+      <root url="file://C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/url_launcher_windows-3.1.5/lib" />
+      <root url="file://C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/uuid-4.5.3/lib" />
+      <root url="file://C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/vector_math-2.2.0/lib" />
+      <root url="file://C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/vm_service-15.2.0/lib" />
+      <root url="file://C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/web-1.1.1/lib" />
+      <root url="file://C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/web_socket-1.0.1/lib" />
+      <root url="file://C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/web_socket_channel-3.0.3/lib" />
+      <root url="file://C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/xdg_directories-1.1.0/lib" />
+      <root url="file://C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/yaml-3.1.3/lib" />
+      <root url="file://C:/Users/kevin/AppData/Local/Pub/Cache/hosted/pub.dev/yet_another_json_isolate-2.1.0/lib" />
+      <root url="file://C:/Users/kevin/dev/flutter/bin/cache/pkg/sky_engine/lib" />
+      <root url="file://C:/Users/kevin/dev/flutter/packages/flutter/lib" />
+      <root url="file://C:/Users/kevin/dev/flutter/packages/flutter_test/lib" />
+      <root url="file://C:/Users/kevin/dev/flutter/packages/flutter_web_plugins/lib" />
     </CLASSES>
     <JAVADOC />
     <SOURCES />

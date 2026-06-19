@@ -441,12 +441,10 @@ class _GestionDomicilioScreenState extends State<GestionDomicilioScreen> {
         controllers: [ctrl],
         builder: (_) => AlertDialog(
           title: const Text('Instrucciones especiales', style: TextStyle(fontWeight: FontWeight.w700)),
-          content: TextField(
+          content: CampoNotasDomicilio(
             controller: ctrl,
             maxLines: 4,
-            decoration: const InputDecoration(
-              hintText: 'Información útil para emergencias (máx. 100 caracteres en BD)',
-            ),
+            hintText: 'Información útil para emergencias (máx. ${CampoNotasDomicilio.maxCaracteres} caracteres)',
           ),
           actions: [
             TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Cancelar')),

@@ -1,12 +1,12 @@
 // ignore_for_file: deprecated_member_use
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../models/condiciones_catalogo.dart';
 import '../services/catalogos_residente_service.dart';
 import '../widgets/chile_rut_formatter.dart';
+import '../widgets/chile_telefono_formatter.dart';
 import '../widgets/custom_widgets.dart';
 import 'registro_models.dart';
 
@@ -122,12 +122,12 @@ class _RegistroPaso2State extends State<RegistroPaso2> {
   void _continuar() {
     final rut = parsearRutChileno(_rutController.text);
     if (rut == null) {
-      _showSnack('Ingresa un RUT válido (ej: 12345678-9).');
+      _showSnack('Ingresa un RUT válido con guion (ej: 12.345.678-9 o 2.022.222-2).');
       return;
     }
     final tel = normalizarTelefonoSufijoChile(_telefonoSufijoController.text);
     if (tel == null) {
-      _showSnack('Teléfono inválido: ingresa 9 dígitos empezando por 9 (ej: 912345678).');
+      _showSnack('Teléfono inválido: ingresa 9 dígitos empezando por 9 (ej: 9 4444 4444).');
       return;
     }
     if (_anioNacimiento == null) {
@@ -260,7 +260,7 @@ class _RegistroPaso2State extends State<RegistroPaso2> {
           keyboardType: TextInputType.text,
           inputFormatters: [ChileRutInputFormatter()],
           decoration: const InputDecoration(
-            hintText: "Escribe solo números y el dígito verificador",
+            hintText: "Ej: 20.222.222-2",
           ),
         ),
         const InputLabel(label: "Teléfono", required: true),
@@ -281,13 +281,10 @@ class _RegistroPaso2State extends State<RegistroPaso2> {
             Expanded(
               child: TextField(
                 controller: _telefonoSufijoController,
-                keyboardType: TextInputType.number,
-                inputFormatters: [
-                  FilteringTextInputFormatter.digitsOnly,
-                  LengthLimitingTextInputFormatter(9),
-                ],
+                keyboardType: TextInputType.phone,
+                inputFormatters: [ChileTelefonoInputFormatter()],
                 decoration: const InputDecoration(
-                  hintText: '912345678',
+                  hintText: '9 4444 4444',
                 ),
               ),
             ),

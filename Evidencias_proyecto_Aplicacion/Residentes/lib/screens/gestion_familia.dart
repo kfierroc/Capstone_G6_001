@@ -349,10 +349,7 @@ class _GestionFamiliaScreenState extends State<GestionFamiliaScreen> {
           CustomAppBar(
             title: 'Mi Información Familiar',
             subtitle: 'Gestiona la información de tu domicilio',
-            showBack: true,
-            onBack: () {
-              if (Navigator.canPop(context)) Navigator.pop(context);
-            },
+            showBack: false,
             trailing: const NotificacionesResidenteButton(),
           ),
           Expanded(child: _buildFamiliaTab()),

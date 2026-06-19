@@ -1,6 +1,7 @@
 import 'package:flutter/services.dart';
 
-/// Formato visual chileno mientras se escribe (sin obligar a escribir el guion).
+/// Formato visual chileno mientras se escribe.
+/// 1–7 dígitos: solo cuerpo con puntos. Desde el 8.º: cuerpo + guion + DV.
 class ChileRutInputFormatter extends TextInputFormatter {
   @override
   TextEditingValue formatEditUpdate(TextEditingValue oldValue, TextEditingValue newValue) {
@@ -12,12 +13,12 @@ class ChileRutInputFormatter extends TextInputFormatter {
 
     late final String body;
     late final String dvPart;
-    if (capped.length <= 8) {
+    if (capped.length <= 7) {
       body = capped;
       dvPart = '';
     } else {
-      body = capped.substring(0, 8);
-      dvPart = capped.substring(8, 9);
+      body = capped.substring(0, capped.length - 1);
+      dvPart = capped.substring(capped.length - 1);
     }
 
     final prettyBody = _puntosCuerpoRut(body);

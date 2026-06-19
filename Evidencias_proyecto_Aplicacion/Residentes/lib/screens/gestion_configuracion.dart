@@ -6,6 +6,7 @@ import '../registro/registro_models.dart';
 import '../services/gestion_residente_service.dart';
 import '../services/registro_residente_service.dart';
 import '../services/recordatorio_permanencia_service.dart';
+import '../widgets/chile_telefono_formatter.dart';
 import '../widgets/custom_widgets.dart';
 import '../widgets/recordatorio_permanencia_ui.dart';
 
@@ -82,13 +83,8 @@ class _GestionConfiguracionScreenState extends State<GestionConfiguracionScreen>
     return months.clamp(1, 6);
   }
 
-  /// Muestra solo 9 dígitos si el teléfono cumple el formato +56.
-  static String _telefonoParaCampo(String guardado) {
-    if (guardado.startsWith('+56') && guardado.length >= 12) {
-      return guardado.substring(3);
-    }
-    return guardado.replaceAll(RegExp(r'\s'), '');
-  }
+  /// Sufijo de 9 dígitos con formato visual para el campo de edición.
+  static String _telefonoParaCampo(String guardado) => telefonoSufijoParaCampo(guardado);
 
   @override
   void initState() {
@@ -96,12 +92,14 @@ class _GestionConfiguracionScreenState extends State<GestionConfiguracionScreen>
     _bootstrap();
   }
 
-  Future<void> _bootstrap() async {
-    setState(() {
-      _loading = true;
-      _error = null;
-      _sinGrupo = null;
-    });
+  Future<void> _bootstrap({bool silencioso = false}) async {
+    if (!silencioso) {
+      setState(() {
+        _loading = true;
+        _error = null;
+        _sinGrupo = null;
+      });
+    }
     final client = Supabase.instance.client;
     final ges = GestionResidenteService(client);
     try {
@@ -119,12 +117,17 @@ class _GestionConfiguracionScreenState extends State<GestionConfiguracionScreen>
         }
         _loading = false;
       });
-      if (!mounted) return;
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        ejecutarRecordatorioPermanenciaTrasCarga(context);
-      });
+      if (!silencioso && mounted) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          ejecutarRecordatorioPermanenciaTrasCarga(context);
+        });
+      }
     } catch (e) {
       if (!mounted) return;
+      if (silencioso) {
+        debugPrint('Error al recargar configuración: $e');
+        return;
+      }
       setState(() {
         _error = e.toString();
         _loading = false;
@@ -158,10 +161,25 @@ class _GestionConfiguracionScreenState extends State<GestionConfiguracionScreen>
                 style: TextStyle(fontSize: 12, color: _textoGris),
               ),
               const SizedBox(height: 12),
-              TextField(
-                controller: ctrl,
-                keyboardType: TextInputType.phone,
-                decoration: const InputDecoration(hintText: '912345678'),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  const Padding(
+                    padding: EdgeInsets.only(right: 8),
+                    child: Text(
+                      '+56',
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: _textoGris),
+                    ),
+                  ),
+                  Expanded(
+                    child: TextField(
+                      controller: ctrl,
+                      keyboardType: TextInputType.phone,
+                      inputFormatters: [ChileTelefonoInputFormatter()],
+                      decoration: const InputDecoration(hintText: '9 4444 4444'),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
@@ -276,23 +294,32 @@ class _GestionConfiguracionScreenState extends State<GestionConfiguracionScreen>
   Future<void> _onCambioPermanencia(String? v) async {
     if (v == null || _idRegistro == null) return;
     final meses = _mesesDesdeEtiqueta(v);
+    final idReg = _idRegistro!;
     try {
-      final idReg = _idRegistro!;
       await GestionResidenteService(Supabase.instance.client).renovarPermanenciaMeses(
         idRegistro: idReg,
         meses: meses,
       );
-      await RecordatorioPermanenciaService(Supabase.instance.client)
-          .sincronizarTrasActualizarPermanencia(idReg);
-      setState(() => _tiempoPermanenciaSeleccion = v);
-      await _bootstrap();
-      if (!mounted) return;
-      _snack('Tiempo de permanencia actualizado.');
     } on RegistroResidenteException catch (e) {
       _snack(e.message);
+      return;
     } catch (e) {
       _snack('No se pudo actualizar: $e');
+      return;
     }
+
+    try {
+      await RecordatorioPermanenciaService(Supabase.instance.client)
+          .sincronizarTrasActualizarPermanencia(idReg);
+    } catch (e) {
+      debugPrint('Recordatorio local tras actualizar permanencia: $e');
+    }
+
+    if (!mounted) return;
+    setState(() => _tiempoPermanenciaSeleccion = v);
+    await _bootstrap(silencioso: true);
+    if (!mounted) return;
+    _snack('Tiempo de permanencia actualizado.');
   }
 
   void _onNavTap(int i) {
@@ -446,7 +473,7 @@ class _GestionConfiguracionScreenState extends State<GestionConfiguracionScreen>
                     _filaDato('RUT', rutTxt),
                     _filaDato('Email', cuenta.email.isEmpty ? '—' : cuenta.email),
                     _filaDato('Edad', _textoEdad(cuenta)),
-                    _filaDato('Teléfono', cuenta.telefonoTitular),
+                    _filaDato('Teléfono', formatearTelefonoMostrar(cuenta.telefonoTitular)),
                   ],
                 ),
               ),

@@ -1,6 +1,7 @@
 import 'dart:async';
 
-import 'package:flutter/foundation.dart' show defaultTargetPlatform, kIsWeb;
+import 'package:flutter/foundation.dart' show Factory, defaultTargetPlatform, kIsWeb;
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
@@ -535,47 +536,137 @@ class _UbicacionResidenciaFormState extends State<UbicacionResidenciaForm> {
     );
   }
 
+  /// En Android/iOS el mapa no debe ir dentro de un [SingleChildScrollView] (queda en gris).
+  bool _layoutMapaFueraDeScroll(bool mapaOk, bool dosColumnas) =>
+      mapaOk && !kIsWeb && !dosColumnas;
+
+  Set<Factory<OneSequenceGestureRecognizer>> get _gestosMapa => {
+        Factory<OneSequenceGestureRecognizer>(() => EagerGestureRecognizer()),
+      };
+
+  Widget _buildWidgetMapa({double? alturaMapa}) {
+    final mapa = ClipRRect(
+      borderRadius: BorderRadius.circular(12),
+      child: GoogleMap(
+        initialCameraPosition: CameraPosition(target: _cameraTarget, zoom: 15),
+        markers: _markers,
+        myLocationButtonEnabled: false,
+        zoomControlsEnabled: true,
+        mapType: MapType.normal,
+        gestureRecognizers: _gestosMapa,
+        onMapCreated: (c) {
+          _mapController = c;
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) {
+              _mapListoParaDispose = true;
+              c.animateCamera(CameraUpdate.newLatLngZoom(_cameraTarget, 15));
+            }
+          });
+        },
+        onTap: _onMapTap,
+      ),
+    );
+    if (alturaMapa != null) {
+      return SizedBox(height: alturaMapa, child: mapa);
+    }
+    return mapa;
+  }
+
+  Widget _buildControlesCoordenadasManual(ButtonStyle botonCoordStyle) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: 12),
+        SizedBox(
+          width: double.infinity,
+          child: OutlinedButton(
+            style: botonCoordStyle,
+            onPressed: () => setState(() => _coordsManualAbiertas = !_coordsManualAbiertas),
+            child: Text(
+              _coordsManualAbiertas ? 'Ocultar coordenadas' : 'Editar latitud y longitud manualmente',
+            ),
+          ),
+        ),
+        if (_coordsManualAbiertas) ...[
+          const SizedBox(height: 12),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: Colors.blue.shade50,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: Colors.blue.shade100),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Coordenadas (opcional)',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                    color: Colors.blue.shade800,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Por defecto el pin define la ubicación. Solo usa esto si necesitas copiar coordenadas desde otro mapa.',
+                  style: TextStyle(fontSize: 12, color: Colors.grey.shade800),
+                ),
+                const SizedBox(height: 12),
+                const InputLabel(label: 'Latitud', required: false),
+                TextField(
+                  controller: _latManualController,
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
+                  onChanged: (_) => _sincronizarManualALatLon(),
+                  decoration: const InputDecoration(hintText: 'Ej: -33.448900'),
+                ),
+                const SizedBox(height: 8),
+                const InputLabel(label: 'Longitud', required: false),
+                TextField(
+                  controller: _lonManualController,
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
+                  onChanged: (_) => _sincronizarManualALatLon(),
+                  decoration: const InputDecoration(hintText: 'Ej: -70.669300'),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
   Widget _buildColumnaMapaYExtras({
     required double alturaMapa,
     required ButtonStyle botonCoordStyle,
+    bool incluirMapa = true,
+    bool compacto = false,
+    bool mapaFlexible = false,
   }) {
     final tituloMapa = MediaQuery.sizeOf(context).width >= 900 ? 15.0 : 14.0;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: mapaFlexible ? MainAxisSize.max : (compacto ? MainAxisSize.min : MainAxisSize.max),
       children: [
-        Text(
-          'Ubicación en el mapa',
-          style: TextStyle(fontWeight: FontWeight.bold, fontSize: tituloMapa),
-        ),
-        const SizedBox(height: 6),
-        Text(
-          'Las coordenadas guardadas son siempre las del pin. Puedes arrastrarlo o tocar el mapa para corregir la posición.',
-          style: TextStyle(fontSize: 12, color: Colors.grey.shade700, height: 1.35),
-        ),
-        const SizedBox(height: 10),
-        if (_mapaGoogleDisponible())
-          SizedBox(
-            height: alturaMapa,
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(12),
-              child: GoogleMap(
-                initialCameraPosition: CameraPosition(target: _cameraTarget, zoom: 15),
-                markers: _markers,
-                myLocationButtonEnabled: false,
-                zoomControlsEnabled: true,
-                mapType: MapType.normal,
-                onMapCreated: (c) {
-                  _mapController = c;
-                  WidgetsBinding.instance.addPostFrameCallback((_) {
-                    if (mounted) _mapListoParaDispose = true;
-                  });
-                },
-                onTap: _onMapTap,
-              ),
-            ),
-          )
-        else
+        if (!compacto) ...[
+          Text(
+            'Ubicación en el mapa',
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: tituloMapa),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Las coordenadas guardadas son siempre las del pin. Puedes arrastrarlo o tocar el mapa para corregir la posición.',
+            style: TextStyle(fontSize: 12, color: Colors.grey.shade700, height: 1.35),
+          ),
+          const SizedBox(height: 10),
+        ],
+        if (_mapaGoogleDisponible() && incluirMapa)
+          mapaFlexible
+              ? Expanded(child: _buildWidgetMapa())
+              : _buildWidgetMapa(alturaMapa: alturaMapa)
+        else if (!_mapaGoogleDisponible())
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
@@ -588,7 +679,7 @@ class _UbicacionResidenciaFormState extends State<UbicacionResidenciaForm> {
               style: TextStyle(fontSize: 13),
             ),
           ),
-        const SizedBox(height: 12),
+        SizedBox(height: compacto ? 8 : 12),
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -604,77 +695,23 @@ class _UbicacionResidenciaFormState extends State<UbicacionResidenciaForm> {
             ),
           ],
         ),
-        const SizedBox(height: 8),
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Icon(Icons.lightbulb_outline, size: 18, color: Colors.amber.shade800),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text(
-                'Esta vista ayuda a los bomberos a localizar tu domicilio en caso de emergencia.',
-                style: TextStyle(fontSize: 12, color: Colors.grey.shade700, height: 1.35),
+        if (!compacto) ...[
+          const SizedBox(height: 8),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(Icons.lightbulb_outline, size: 18, color: Colors.amber.shade800),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Esta vista ayuda a los bomberos a localizar tu domicilio en caso de emergencia.',
+                  style: TextStyle(fontSize: 12, color: Colors.grey.shade700, height: 1.35),
+                ),
               ),
-            ),
-          ],
-        ),
-        if (_mapaGoogleDisponible()) ...[
-          const SizedBox(height: 12),
-          SizedBox(
-            width: double.infinity,
-            child: OutlinedButton(
-              style: botonCoordStyle,
-              onPressed: () => setState(() => _coordsManualAbiertas = !_coordsManualAbiertas),
-              child: Text(_coordsManualAbiertas ? 'Ocultar coordenadas' : 'Editar latitud y longitud manualmente'),
-            ),
+            ],
           ),
-          if (_coordsManualAbiertas) ...[
-            const SizedBox(height: 12),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: Colors.blue.shade50,
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: Colors.blue.shade100),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Coordenadas (opcional)',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
-                      color: Colors.blue.shade800,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Por defecto el pin define la ubicación. Solo usa esto si necesitas copiar coordenadas desde otro mapa.',
-                    style: TextStyle(fontSize: 12, color: Colors.grey.shade800),
-                  ),
-                  const SizedBox(height: 12),
-                  const InputLabel(label: 'Latitud', required: false),
-                  TextField(
-                    controller: _latManualController,
-                    keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
-                    onChanged: (_) => _sincronizarManualALatLon(),
-                    decoration: const InputDecoration(hintText: 'Ej: -33.448900'),
-                  ),
-                  const SizedBox(height: 8),
-                  const InputLabel(label: 'Longitud', required: false),
-                  TextField(
-                    controller: _lonManualController,
-                    keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
-                    onChanged: (_) => _sincronizarManualALatLon(),
-                    decoration: const InputDecoration(hintText: 'Ej: -70.669300'),
-                  ),
-                ],
-              ),
-            ),
-          ],
         ],
+        if (_mapaGoogleDisponible() && !compacto) _buildControlesCoordenadasManual(botonCoordStyle),
         if (!_mapaGoogleDisponible()) ...[
           const SizedBox(height: 16),
           Container(
@@ -834,6 +871,42 @@ class _UbicacionResidenciaFormState extends State<UbicacionResidenciaForm> {
                 ],
               ),
               const SizedBox(height: 28),
+              botones,
+            ],
+          );
+        }
+
+        final mapaFueraScroll = _layoutMapaFueraDeScroll(mapaOk, dosColumnas);
+        if (mapaFueraScroll) {
+          final columnaDireccionMovil = Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              ...columnaIzquierda.children,
+              if (_mapaGoogleDisponible()) _buildControlesCoordenadasManual(botonCoordStyle),
+            ],
+          );
+
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Expanded(
+                flex: 12,
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: columnaDireccionMovil,
+                ),
+              ),
+              const SizedBox(height: 10),
+              Expanded(
+                flex: 8,
+                child: _buildColumnaMapaYExtras(
+                  alturaMapa: alturaMapa,
+                  botonCoordStyle: botonCoordStyle,
+                  compacto: true,
+                  mapaFlexible: true,
+                ),
+              ),
+              const SizedBox(height: 12),
               botones,
             ],
           );

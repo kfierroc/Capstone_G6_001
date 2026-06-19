@@ -40,4 +40,15 @@ class BomberoPerfil {
       idCompania: (m['id_compania'] as num).toInt(),
     );
   }
+
+  BomberoPerfil copyWith({int? idCompania}) {
+    return BomberoPerfil(
+      rutNum: rutNum,
+      rutDv: rutDv,
+      nombBombero: nombBombero,
+      apePBombero: apePBombero,
+      isAdmin: isAdmin,
+      idCompania: idCompania ?? this.idCompania,
+    );
+  }
 }

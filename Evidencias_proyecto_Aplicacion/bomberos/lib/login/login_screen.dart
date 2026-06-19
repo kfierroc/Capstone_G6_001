@@ -4,6 +4,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../auth/auth_utils.dart';
 import '../auth/bombero_access.dart';
 import '../models/bombero_perfil.dart';
+import '../registro/registro_screen.dart';
 import '../screens/home_bombero_screen.dart';
 import '../widgets/custom_widgets.dart';
 
@@ -143,9 +144,28 @@ class _LoginScreenState extends State<LoginScreen> {
                             )
                           : const Text('Iniciar sesión'),
                     ),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 20),
+                    TextButton(
+                      onPressed: _loading
+                          ? null
+                          : () {
+                              Navigator.push<void>(
+                                context,
+                                MaterialPageRoute<void>(builder: (_) => const RegistroScreen()),
+                              );
+                            },
+                      child: const Text(
+                        '¿No tienes cuenta? Regístrate aquí',
+                        style: TextStyle(
+                          color: Color(0xFFC62828),
+                          fontWeight: FontWeight.w700,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
                     Text(
-                      '¿No puedes entrar? Solicita en tu compañía que te den de alta y vinculen tu correo en la tabla bombero (user_id).',
+                      '¿No puedes entrar? Solicita en tu compañía el alta o usa el registro si aplica.',
                       textAlign: TextAlign.center,
                       style: TextStyle(color: Colors.grey.shade600, fontSize: 13, height: 1.35),
                     ),

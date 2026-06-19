@@ -315,11 +315,15 @@ class _NotificacionesResidenteButtonState extends State<NotificacionesResidenteB
 
 /// Llama tras cargar datos en pantallas de gestión.
 Future<void> ejecutarRecordatorioPermanenciaTrasCarga(BuildContext context) async {
-  final estado = await RecordatorioPermanenciaService(Supabase.instance.client).evaluar();
-  if (estado != null) {
-    await RecordatorioPermanenciaService(Supabase.instance.client)
-        .sincronizarTrasActualizarPermanencia(estado.idRegistro);
+  try {
+    final estado = await RecordatorioPermanenciaService(Supabase.instance.client).evaluar();
+    if (estado != null) {
+      await RecordatorioPermanenciaService(Supabase.instance.client)
+          .sincronizarTrasActualizarPermanencia(estado.idRegistro);
+    }
+    if (!context.mounted) return;
+    await RecordatorioPermanenciaUi.verificarAlEntrar(context);
+  } catch (e, st) {
+    debugPrint('Recordatorio de permanencia al cargar: $e\n$st');
   }
-  if (!context.mounted) return;
-  await RecordatorioPermanenciaUi.verificarAlEntrar(context);
 }

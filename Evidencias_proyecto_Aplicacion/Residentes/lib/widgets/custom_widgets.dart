@@ -8,7 +8,15 @@ class ResponsiveContainer extends StatelessWidget {
   /// Si no es null, limita el ancho del contenido (p. ej. paso 3 con mapa amplio).
   final double? maxWidth;
 
-  const ResponsiveContainer({super.key, required this.child, this.maxWidth});
+  /// En pantallas con [Column]/[Expanded] (p. ej. paso 3 en móvil), ocupa toda la altura disponible.
+  final bool fillHeight;
+
+  const ResponsiveContainer({
+    super.key,
+    required this.child,
+    this.maxWidth,
+    this.fillHeight = false,
+  });
 
   static double _defaultMaxWidth(double screenWidth) {
     if (screenWidth >= 1400) return 1080;
@@ -33,6 +41,44 @@ class ResponsiveContainer extends StatelessWidget {
             ? 28.0
             : 22.0;
 
+    Widget cardContent = Padding(
+      padding: EdgeInsets.all(inner),
+      child: child,
+    );
+
+    if (fillHeight) {
+      return LayoutBuilder(
+        builder: (context, constraints) {
+          final maxH = constraints.maxHeight;
+          return Align(
+            alignment: Alignment.topCenter,
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                maxWidth: effectiveMax,
+                maxHeight: maxH.isFinite ? maxH : double.infinity,
+              ),
+              child: Padding(
+                padding: EdgeInsets.fromLTRB(outer, outer, outer, outer + 8),
+                child: Card(
+                  elevation: screenW >= 600 ? 3 : 2,
+                  shadowColor: Colors.black12,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                  color: Colors.white,
+                  child: maxH.isFinite
+                      ? SizedBox(
+                          width: double.infinity,
+                          height: maxH - outer * 2 - 8,
+                          child: cardContent,
+                        )
+                      : cardContent,
+                ),
+              ),
+            ),
+          );
+        },
+      );
+    }
+
     return Align(
       alignment: Alignment.topCenter,
       child: ConstrainedBox(
@@ -44,10 +90,7 @@ class ResponsiveContainer extends StatelessWidget {
             shadowColor: Colors.black12,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
             color: Colors.white,
-            child: Padding(
-              padding: EdgeInsets.all(inner),
-              child: child,
-            ),
+            child: cardContent,
           ),
         ),
       ),
@@ -93,9 +136,7 @@ class CustomAppBar extends StatelessWidget {
                 IconButton(
                   icon: const Icon(Icons.arrow_back, color: Colors.white),
                   onPressed: onBack ?? () => Navigator.pop(context),
-                )
-              else
-                const SizedBox(width: 48),
+                ),
               const Icon(Icons.home_outlined, color: Colors.white, size: 28),
               const SizedBox(width: 12),
               Expanded(
@@ -230,6 +271,56 @@ class InputLabel extends StatelessWidget {
           if (required)
             const Text(" *", style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
         ],
+      ),
+    );
+  }
+}
+
+/// Campo de notas del domicilio con límite y contador (ej. 20/100).
+class CampoNotasDomicilio extends StatelessWidget {
+  static const int maxCaracteres = 100;
+
+  final TextEditingController controller;
+  final int maxLines;
+  final String hintText;
+
+  const CampoNotasDomicilio({
+    super.key,
+    required this.controller,
+    this.maxLines = 3,
+    this.hintText =
+        'Información adicional relevante para bomberos (accesos especiales, llaves, etc.)',
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return TextField(
+      controller: controller,
+      maxLines: maxLines,
+      maxLength: maxCaracteres,
+      buildCounter: (
+        context, {
+        required currentLength,
+        required isFocused,
+        maxLength,
+      }) {
+        return Padding(
+          padding: const EdgeInsets.only(top: 4),
+          child: Align(
+            alignment: Alignment.centerRight,
+            child: Text(
+              '$currentLength/${maxLength ?? maxCaracteres}',
+              style: TextStyle(
+                fontSize: 12,
+                color: currentLength >= maxCaracteres ? Colors.red.shade700 : const Color(0xFF6B7280),
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+        );
+      },
+      decoration: InputDecoration(
+        hintText: hintText,
       ),
     );
   }

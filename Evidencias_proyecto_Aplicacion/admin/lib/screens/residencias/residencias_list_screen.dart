@@ -1,0 +1,405 @@
+import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+
+import '../../models/residencia_admin_detalle.dart';
+import '../../services/residencias_admin_service.dart';
+import '../../theme/admin_theme.dart';
+import '../../utils/filtro_ubicacion_lista.dart';
+import '../../widgets/admin_action_bar.dart';
+import '../../widgets/admin_header.dart';
+import '../../widgets/admin_lista_filtros_ubicacion.dart';
+import 'residencia_edit_screen.dart';
+
+class ResidenciasListScreen extends StatefulWidget {
+  const ResidenciasListScreen({
+    super.key,
+    required this.alertCount,
+    required this.onVerDetalle,
+  });
+
+  final int alertCount;
+  final ValueChanged<int> onVerDetalle;
+
+  @override
+  State<ResidenciasListScreen> createState() => _ResidenciasListScreenState();
+}
+
+class _ResidenciasListScreenState extends State<ResidenciasListScreen> {
+  final _filtrosKey = GlobalKey<AdminListaFiltrosUbicacionState>();
+  final _idController = TextEditingController();
+  final _busquedaController = TextEditingController();
+  List<ResidenciaListItem> _residencias = [];
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _cargar();
+  }
+
+  @override
+  void dispose() {
+    _idController.dispose();
+    _busquedaController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _cargar() async {
+    setState(() => _loading = true);
+    final lista = await ResidenciasAdminService(Supabase.instance.client).listarResidencias();
+    if (mounted) {
+      setState(() {
+        _residencias = lista;
+        _loading = false;
+      });
+    }
+  }
+
+  void _proximamente(String accion) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$accion — próximamente.')));
+  }
+
+  List<ResidenciaListItem> get _filtrados {
+    final q = _busquedaController.text.trim();
+    final f = _filtrosKey.currentState;
+    final comunaMap = f?.comunaARegion ?? const {};
+    return _residencias.where((r) {
+      if (!filtroUbicacion(
+        cutComItem: r.cutCom,
+        cutRegFiltro: f?.cutRegFiltro,
+        cutComFiltro: f?.cutComFiltro,
+        comunaARegion: comunaMap,
+      )) {
+        return false;
+      }
+      if (!filtroId(id: r.idResidencia, idQuery: _idController.text)) return false;
+      return r.coincideConBusqueda(q);
+    }).toList();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final filtrados = _filtrados;
+    final esAncho = MediaQuery.sizeOf(context).width >= 900;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        AdminHeader(title: 'Residencias', alertCount: widget.alertCount),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(32, 20, 32, 0),
+          child: Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AdminTheme.cardBorder),
+            ),
+            child: AdminListaFiltrosUbicacion(
+              key: _filtrosKey,
+              idController: _idController,
+              busquedaController: _busquedaController,
+              idHint: 'ID de residencia',
+              busquedaHint: 'Buscar por dirección o estado...',
+              onChanged: () => setState(() {}),
+              trailing: AdminPrimaryButton(
+                label: 'Agregar Residencia',
+                icon: Icons.add,
+                onPressed: () => _proximamente('Agregar residencia'),
+              ),
+            ),
+          ),
+        ),
+        Expanded(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(32, 16, 32, 32),
+            child: Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AdminTheme.cardBorder),
+              ),
+              child: _loading
+                  ? const Center(child: CircularProgressIndicator())
+                  : filtrados.isEmpty
+                      ? Center(
+                          child: Text(
+                            _residencias.isEmpty
+                                ? 'No hay residencias registradas.'
+                                : 'Sin resultados para la búsqueda.',
+                            style: const TextStyle(color: AdminTheme.mutedText),
+                          ),
+                        )
+                      : RefreshIndicator(
+                          onRefresh: _cargar,
+                          child: esAncho
+                              ? _TablaDesktop(
+                                  residencias: filtrados,
+                                  onVerDetalle: widget.onVerDetalle,
+                                  onEliminar: () => _proximamente('Eliminar'),
+                                )
+                              : _ListaMobile(
+                                  residencias: filtrados,
+                                  onVerDetalle: widget.onVerDetalle,
+                                  onEliminar: () => _proximamente('Eliminar'),
+                                ),
+                        ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _TablaDesktop extends StatelessWidget {
+  const _TablaDesktop({
+    required this.residencias,
+    required this.onVerDetalle,
+    required this.onEliminar,
+  });
+
+  final List<ResidenciaListItem> residencias;
+  final ValueChanged<int> onVerDetalle;
+  final VoidCallback onEliminar;
+
+  static const _headerStyle = TextStyle(
+    fontSize: 11,
+    fontWeight: FontWeight.w600,
+    color: AdminTheme.mutedText,
+    letterSpacing: 0.5,
+  );
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      children: [
+        const Padding(
+          padding: EdgeInsets.fromLTRB(20, 16, 20, 12),
+          child: Row(
+            children: [
+              Expanded(flex: 1, child: Text('ID', style: _headerStyle)),
+              Expanded(flex: 3, child: Text('DIRECCIÓN', style: _headerStyle)),
+              Expanded(flex: 2, child: Text('COMUNA', style: _headerStyle)),
+              Expanded(flex: 2, child: Text('ESTADO', style: _headerStyle)),
+              Expanded(flex: 2, child: Text('GRUPO FAMILIAR', style: _headerStyle)),
+              SizedBox(width: 260, child: Text('ACCIONES', style: _headerStyle)),
+            ],
+          ),
+        ),
+        const Divider(height: 1, color: AdminTheme.cardBorder),
+        ...residencias.map(
+          (r) => _FilaDesktop(
+            residencia: r,
+            onVerDetalle: () => onVerDetalle(r.idResidencia),
+            onEliminar: onEliminar,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _FilaDesktop extends StatelessWidget {
+  const _FilaDesktop({
+    required this.residencia,
+    required this.onVerDetalle,
+    required this.onEliminar,
+  });
+
+  final ResidenciaListItem residencia;
+  final VoidCallback onVerDetalle;
+  final VoidCallback onEliminar;
+
+  static const _cellStyle = TextStyle(fontSize: 14, color: AdminTheme.titleText);
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Expanded(flex: 1, child: Text('${residencia.idResidencia}', style: _cellStyle)),
+              Expanded(flex: 3, child: Text(residencia.direccion, style: _cellStyle)),
+              Expanded(flex: 2, child: Text(residencia.comuna, style: _cellStyle)),
+              Expanded(flex: 2, child: _EstadoBadge(vigente: residencia.registroVigente)),
+              Expanded(flex: 2, child: _GrupoBadge(vinculado: residencia.tieneGrupoVinculado)),
+              SizedBox(
+                width: 260,
+                child: Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    AdminOutlineButton(label: 'Ver Detalle', onPressed: onVerDetalle),
+                    AdminDangerButton(label: 'Eliminar', onPressed: onEliminar),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        const Divider(height: 1, color: AdminTheme.cardBorder),
+      ],
+    );
+  }
+}
+
+class _EstadoBadge extends StatelessWidget {
+  const _EstadoBadge({required this.vigente});
+
+  final bool vigente;
+
+  @override
+  Widget build(BuildContext context) {
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+        decoration: BoxDecoration(
+          color: vigente ? const Color(0xFFECFDF5) : const Color(0xFFF3F4F6),
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Text(
+          vigente ? 'Vigente' : 'Sin registro vigente',
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: vigente ? AdminTheme.successGreen : AdminTheme.mutedText,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _GrupoBadge extends StatelessWidget {
+  const _GrupoBadge({required this.vinculado});
+
+  final bool vinculado;
+
+  @override
+  Widget build(BuildContext context) {
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+        decoration: BoxDecoration(
+          color: vinculado ? const Color(0xFFEFF6FF) : const Color(0xFFF3F4F6),
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Text(
+          vinculado ? 'Vinculado' : 'Sin grupo',
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: vinculado ? AdminTheme.infoBlue : AdminTheme.mutedText,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ListaMobile extends StatelessWidget {
+  const _ListaMobile({
+    required this.residencias,
+    required this.onVerDetalle,
+    required this.onEliminar,
+  });
+
+  final List<ResidenciaListItem> residencias;
+  final ValueChanged<int> onVerDetalle;
+  final VoidCallback onEliminar;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView.separated(
+      padding: const EdgeInsets.all(16),
+      itemCount: residencias.length,
+      separatorBuilder: (_, _) => const SizedBox(height: 12),
+      itemBuilder: (context, i) {
+        final r = residencias[i];
+        return Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            border: Border.all(color: AdminTheme.cardBorder),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      r.direccion,
+                      style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
+                    ),
+                  ),
+                  _EstadoBadge(vigente: r.registroVigente),
+                ],
+              ),
+              const SizedBox(height: 4),
+              Text('ID ${r.idResidencia} · ${r.comuna}', style: const TextStyle(color: AdminTheme.mutedText, fontSize: 13)),
+              const SizedBox(height: 8),
+              _GrupoBadge(vinculado: r.tieneGrupoVinculado),
+              const SizedBox(height: 12),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  AdminOutlineButton(label: 'Ver Detalle', onPressed: () => onVerDetalle(r.idResidencia)),
+                  AdminDangerButton(label: 'Eliminar', onPressed: onEliminar),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+class ResidenciaSection extends StatefulWidget {
+  const ResidenciaSection({
+    super.key,
+    required this.alertCount,
+    required this.onVerGrupoFamiliar,
+  });
+
+  final int alertCount;
+  final ValueChanged<int> onVerGrupoFamiliar;
+
+  @override
+  State<ResidenciaSection> createState() => _ResidenciaSectionState();
+}
+
+class _ResidenciaSectionState extends State<ResidenciaSection> {
+  int? _editResidenciaId;
+
+  void _volverLista() => setState(() => _editResidenciaId = null);
+
+  void _abrirMapaResidencia(int idResidencia) => setState(() => _editResidenciaId = idResidencia);
+
+  @override
+  Widget build(BuildContext context) {
+    if (_editResidenciaId != null) {
+      return ResidenciaEditScreen(
+        idResidencia: _editResidenciaId!,
+        alertCount: widget.alertCount,
+        volverLabel: 'Volver a Residencias',
+        onVolver: _volverLista,
+        onGuardado: _volverLista,
+        onVerGrupoFamiliar: widget.onVerGrupoFamiliar,
+      );
+    }
+
+    return ResidenciasListScreen(
+      alertCount: widget.alertCount,
+      onVerDetalle: _abrirMapaResidencia,
+    );
+  }
+}

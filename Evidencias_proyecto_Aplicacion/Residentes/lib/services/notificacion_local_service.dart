@@ -1,4 +1,4 @@
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart' show debugPrint, kIsWeb;
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/data/latest.dart' as tz_data;
 import 'package:timezone/timezone.dart' as tz;
@@ -57,46 +57,55 @@ class NotificacionLocalService {
   }) async {
     if (kIsWeb || !_inicializado) return;
 
-    await cancelar(idRegistro);
+    try {
+      await cancelar(idRegistro);
 
-    var programada = DateTime(cuando.year, cuando.month, cuando.day, 10, 0);
-    final ahora = DateTime.now();
-    if (!programada.isAfter(ahora)) {
-      programada = ahora.add(const Duration(days: 1));
-    }
+      var programada = DateTime(cuando.year, cuando.month, cuando.day, 10, 0);
+      final ahora = DateTime.now();
+      if (!programada.isAfter(ahora)) {
+        programada = ahora.add(const Duration(days: 1));
+      }
 
-    final loc = tz.local;
-    final tzFecha = tz.TZDateTime(
-      loc,
-      programada.year,
-      programada.month,
-      programada.day,
-      programada.hour,
-      programada.minute,
-    );
+      final loc = tz.local;
+      final tzFecha = tz.TZDateTime(
+        loc,
+        programada.year,
+        programada.month,
+        programada.day,
+        programada.hour,
+        programada.minute,
+      );
 
-    final mesTxt = mesesTranscurridos == 1 ? '1 mes' : '$mesesTranscurridos meses';
-    await _plugin.zonedSchedule(
-      idRegistro,
-      'Confirmación de domicilio',
-      'Han pasado $mesTxt en tu residencia. ¿Tu información sigue siendo correcta? Abre la app para confirmar.',
-      tzFecha,
-      const NotificationDetails(
-        android: AndroidNotificationDetails(
-          _canalId,
-          _canalNombre,
-          importance: Importance.high,
-          priority: Priority.high,
+      final mesTxt = mesesTranscurridos == 1 ? '1 mes' : '$mesesTranscurridos meses';
+      await _plugin.zonedSchedule(
+        idRegistro,
+        'Confirmación de domicilio',
+        'Han pasado $mesTxt en tu residencia. ¿Tu información sigue siendo correcta? Abre la app para confirmar.',
+        tzFecha,
+        const NotificationDetails(
+          android: AndroidNotificationDetails(
+            _canalId,
+            _canalNombre,
+            importance: Importance.high,
+            priority: Priority.high,
+          ),
+          iOS: DarwinNotificationDetails(),
         ),
-        iOS: DarwinNotificationDetails(),
-      ),
-      androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
-      uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
-    );
+        androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+        uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
+      );
+    } catch (e, st) {
+      // La actualización en BD no debe fallar si el dispositivo no programa notificaciones.
+      debugPrint('No se pudo programar notificación local: $e\n$st');
+    }
   }
 
   static Future<void> cancelar(int idRegistro) async {
     if (kIsWeb) return;
-    await _plugin.cancel(idRegistro);
+    try {
+      await _plugin.cancel(idRegistro);
+    } catch (e, st) {
+      debugPrint('No se pudo cancelar notificación local: $e\n$st');
+    }
   }
 }
