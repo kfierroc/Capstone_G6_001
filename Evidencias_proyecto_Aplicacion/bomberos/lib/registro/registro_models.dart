@@ -8,15 +8,25 @@ class RegistroBomberoBorrador {
   int? idCompania;
 }
 
-/// Acepta RUT con o sin puntos y con guion.
+/// Acepta RUT solo con guion y DV. Mínimo 8 dígitos (ej. 2.022.222-2).
 ({int num, String dv})? parsearRutChileno(String raw) {
-  var s = raw.trim().replaceAll(RegExp(r'[\.\s]'), '').toUpperCase();
-  if (s.length < 2) return null;
-  final dv = s.substring(s.length - 1);
+  final t = raw.trim().toUpperCase();
+  if (!t.contains('-')) return null;
+
+  final partes = t.split('-');
+  if (partes.length != 2) return null;
+
+  final body = partes[0].replaceAll(RegExp(r'[^0-9]'), '');
+  final dv = partes[1].replaceAll(RegExp(r'[^0-9K]'), '');
+
+  if (body.length < 7 || body.length > 8 || dv.length != 1) return null;
   if (!RegExp(r'^[\dK]$').hasMatch(dv)) return null;
-  final body = s.substring(0, s.length - 1).replaceAll(RegExp(r'[^0-9]'), '');
-  if (body.isEmpty || body.length > 8) return null;
+
+  final totalDigitos = body.length + dv.length;
+  if (totalDigitos < 8 || totalDigitos > 9) return null;
+
   final n = int.tryParse(body);
   if (n == null) return null;
+
   return (num: n, dv: dv);
 }

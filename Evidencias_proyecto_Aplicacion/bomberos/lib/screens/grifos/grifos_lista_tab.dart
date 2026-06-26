@@ -9,7 +9,7 @@ import '../../services/mapa_grifo_service.dart';
 import '../../widgets/custom_widgets.dart';
 import 'grifos_resultados_widgets.dart';
 
-/// Pestaña lista: búsqueda por ID (región/comuna) y filtros sobre resultados cargados.
+/// Pestaña lista: búsqueda por comuna y por ID (adicional).
 class GrifosListaTab extends StatefulWidget {
   const GrifosListaTab({
     super.key,
@@ -41,6 +41,7 @@ class _GrifosListaTabState extends State<GrifosListaTab> {
   bool _busquedaLibre = false;
   bool _cargandoFiltros = true;
   bool _cargandoComunas = false;
+  bool _buscandoComuna = false;
   bool _buscandoId = false;
 
   GrifoFiltroEstado _filtroEstado = GrifoFiltroEstado.todos;
@@ -86,6 +87,10 @@ class _GrifosListaTabState extends State<GrifosListaTab> {
         _cutComSeleccionada = cutCom;
         _cargandoFiltros = false;
       });
+
+      if (cutCom != null && !_busquedaLibre) {
+        await _buscarPorComuna();
+      }
     } catch (_) {
       if (mounted) setState(() => _cargandoFiltros = false);
     }
@@ -115,12 +120,53 @@ class _GrifosListaTabState extends State<GrifosListaTab> {
     }
   }
 
+  Future<void> _onComunaChanged(int? cutCom) async {
+    setState(() => _cutComSeleccionada = cutCom);
+    if (cutCom != null && !_busquedaLibre) {
+      await _buscarPorComuna();
+    }
+  }
+
   bool get _filtroUbicacionCompleto => _cutRegSeleccionada != null && _cutComSeleccionada != null;
+
+  bool get _puedeBuscarComuna => !_busquedaLibre && _filtroUbicacionCompleto;
 
   bool get _puedeBuscarId => _busquedaLibre || _filtroUbicacionCompleto;
 
+  bool get _buscando => _buscandoComuna || _buscandoId;
+
   void _alternarBusquedaLibre() {
     setState(() => _busquedaLibre = !_busquedaLibre);
+  }
+
+  Future<void> _buscarPorComuna() async {
+    if (_busquedaLibre) return;
+    if (_cutRegSeleccionada == null) {
+      _snack('Selecciona una región.');
+      return;
+    }
+    if (_cutComSeleccionada == null) {
+      _snack('Selecciona una comuna.');
+      return;
+    }
+
+    setState(() => _buscandoComuna = true);
+    try {
+      final lista = await _svc.listarPorComuna(_cutComSeleccionada!);
+      if (!mounted) return;
+
+      widget.onResultados(lista);
+      if (lista.isEmpty) {
+        final nombre = _comunas.where((c) => c.cutCom == _cutComSeleccionada).map((c) => c.nombre).firstOrNull;
+        _snack('No hay grifos registrados en ${nombre ?? 'la comuna seleccionada'}.');
+      }
+    } on MapaGrifoException catch (e) {
+      if (mounted) _snack(e.message);
+    } catch (e) {
+      if (mounted) _snack('Error al buscar grifos: $e');
+    } finally {
+      if (mounted) setState(() => _buscandoComuna = false);
+    }
   }
 
   Future<void> _buscarPorId() async {
@@ -182,14 +228,15 @@ class _GrifosListaTabState extends State<GrifosListaTab> {
               children: [
                 _seccionTitulo(
                   icon: Icons.filter_list,
-                  titulo: 'Buscar grifo por ID',
-                  subtitulo: 'Región y comuna filtran la búsqueda por ID. El mapa no usa este filtro.',
+                  titulo: 'Buscar grifos',
+                  subtitulo:
+                      'Selecciona región y comuna para listar grifos. La búsqueda por ID es adicional.',
                 ),
                 const SizedBox(height: 10),
                 SizedBox(
                   width: double.infinity,
                   child: OutlinedButton.icon(
-                    onPressed: _buscandoId ? null : _alternarBusquedaLibre,
+                    onPressed: _buscando ? null : _alternarBusquedaLibre,
                     icon: Icon(
                       _busquedaLibre ? Icons.travel_explore : Icons.travel_explore_outlined,
                       size: 20,
@@ -220,7 +267,7 @@ class _GrifosListaTabState extends State<GrifosListaTab> {
                           valor: _cutRegSeleccionada,
                           hint: 'Selecciona una región',
                           items: _regiones.map((r) => (r.cutReg, r.nombre)).toList(),
-                          onChanged: _buscandoId ? null : _onRegionChanged,
+                          onChanged: _buscando ? null : _onRegionChanged,
                         ),
                   const SizedBox(height: 12),
                   _labelObligatorio('Comuna'),
@@ -234,42 +281,72 @@ class _GrifosListaTabState extends State<GrifosListaTab> {
                           ? 'Primero selecciona una región'
                           : 'Selecciona una comuna',
                       items: _comunas.map((c) => (c.cutCom, c.nombre)).toList(),
-                      onChanged: (_buscandoId || _cutRegSeleccionada == null)
-                          ? null
-                          : (v) => setState(() => _cutComSeleccionada = v),
+                      onChanged: (_buscando || _cutRegSeleccionada == null) ? null : _onComunaChanged,
                     ),
+                  const SizedBox(height: 12),
+                  FilledButton.icon(
+                    onPressed: (_buscandoComuna || !_puedeBuscarComuna) ? null : _buscarPorComuna,
+                    icon: _buscandoComuna
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                          )
+                        : const Icon(Icons.search, size: 20),
+                    label: Text(_buscandoComuna ? 'Buscando…' : 'Buscar en comuna'),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: _azul,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    ),
+                  ),
                 ],
-                const SizedBox(height: 14),
-                TextField(
-                  controller: _buscarIdCtrl,
-                  keyboardType: TextInputType.number,
-                  decoration: InputDecoration(
-                    hintText: 'Buscar por ID de grifo...',
-                    filled: true,
-                    fillColor: Colors.white,
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10),
-                      borderSide: BorderSide(color: Colors.grey.shade300),
-                    ),
-                  ),
+                const SizedBox(height: 20),
+                Text(
+                  'Búsqueda adicional por ID',
+                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.grey.shade800),
                 ),
-                const SizedBox(height: 10),
-                FilledButton.icon(
-                  onPressed: (_buscandoId || !_puedeBuscarId) ? null : _buscarPorId,
-                  icon: _buscandoId
-                      ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                        )
-                      : const Icon(Icons.search, size: 20),
-                  label: Text(_buscandoId ? 'Buscando…' : 'Buscar por ID'),
-                  style: FilledButton.styleFrom(
-                    backgroundColor: _azul,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                  ),
+                const SizedBox(height: 8),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: _buscarIdCtrl,
+                        keyboardType: TextInputType.number,
+                        enabled: !_buscandoId,
+                        decoration: InputDecoration(
+                          hintText: 'ID de grifo…',
+                          filled: true,
+                          fillColor: Colors.white,
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10),
+                            borderSide: BorderSide(color: Colors.grey.shade300),
+                          ),
+                        ),
+                        onSubmitted: (_) {
+                          if (_puedeBuscarId && !_buscandoId) _buscarPorId();
+                        },
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    FilledButton(
+                      onPressed: (_buscandoId || !_puedeBuscarId) ? null : _buscarPorId,
+                      style: FilledButton.styleFrom(
+                        backgroundColor: _azul,
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
+                      child: _buscandoId
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                            )
+                          : const Text('Buscar ID', style: TextStyle(fontWeight: FontWeight.w700)),
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 20),
                 GrifosPanelResultados(
@@ -348,5 +425,4 @@ class _GrifosListaTabState extends State<GrifosListaTab> {
       onChanged: onChanged,
     );
   }
-
 }

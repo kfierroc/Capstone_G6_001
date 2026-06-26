@@ -161,10 +161,6 @@ class _GestionFamiliaScreenState extends State<GestionFamiliaScreen> {
       _snack('Ingresa un año de nacimiento válido.');
       return;
     }
-    if (_seleccionadasIds.isEmpty) {
-      _snack('Selecciona al menos una condición.');
-      return;
-    }
     try {
       await GestionResidenteService(Supabase.instance.client).agregarIntegrante(
         idGrupof: ctx.idGrupof,
@@ -221,7 +217,7 @@ class _GestionFamiliaScreenState extends State<GestionFamiliaScreen> {
                     ),
                     const SizedBox(height: 16),
                     const Text(
-                      'Condiciones',
+                      'Condiciones (opcional)',
                       style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
                     ),
                     const SizedBox(height: 8),
@@ -261,10 +257,6 @@ class _GestionFamiliaScreenState extends State<GestionFamiliaScreen> {
                   final anio = int.tryParse(anioEdit.text.trim());
                   if (anio == null) {
                     _snack('Año inválido.');
-                    return;
-                  }
-                  if (condEdit.isEmpty) {
-                    _snack('Selecciona al menos una condición.');
                     return;
                   }
                   try {
@@ -460,6 +452,16 @@ class _GestionFamiliaScreenState extends State<GestionFamiliaScreen> {
                       ),
                     ),
                     const SizedBox(height: 16),
+                    const Text(
+                      'Condiciones médicas o especiales (opcional)',
+                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: _textoPrincipal),
+                    ),
+                    const SizedBox(height: 4),
+                    const Text(
+                      'Si no aplica, deja sin marcar y agrega el integrante igualmente.',
+                      style: TextStyle(fontSize: 12, color: _textoGris),
+                    ),
+                    const SizedBox(height: 8),
                     if (_catalogLoading)
                       const Padding(
                         padding: EdgeInsets.symmetric(vertical: 24),
@@ -509,12 +511,7 @@ class _GestionFamiliaScreenState extends State<GestionFamiliaScreen> {
                       width: double.infinity,
                       height: 48,
                       child: ElevatedButton.icon(
-                        onPressed: (_catalogLoading ||
-                                _catalogError != null ||
-                                _categorias.isEmpty ||
-                                _contexto == null)
-                            ? null
-                            : () => _agregarIntegrante(),
+                        onPressed: (_catalogLoading || _contexto == null) ? null : () => _agregarIntegrante(),
                         icon: const Icon(Icons.add, size: 20),
                         label: const Text(
                           'Agregar Residente',

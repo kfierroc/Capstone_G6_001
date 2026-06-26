@@ -1,6 +1,7 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../models/residencia_detalle.dart';
+import '../utils/chile_format.dart';
 import '../utils/supabase_parse.dart';
 
 class DetalleResidenciaException implements Exception {
@@ -23,16 +24,7 @@ class DetalleResidenciaService {
     return DateTime.now();
   }
 
-  static String _formatearRut(int rutNum, String dv) {
-    var s = rutNum.toString();
-    final partes = <String>[];
-    while (s.length > 3) {
-      partes.add(s.substring(s.length - 3));
-      s = s.substring(0, s.length - 3);
-    }
-    if (s.isNotEmpty) partes.add(s);
-    return '${partes.reversed.join('.')}-${dv.toUpperCase()}';
-  }
+  static String _formatearRut(int rutNum, String dv) => ChileFormat.formatearRut(rutNum, dv);
 
   Future<ResidenciaDetalle?> obtenerPorRegistro(int idRegistro) async {
     try {
@@ -70,11 +62,11 @@ class DetalleResidenciaService {
           .maybeSingle();
 
       final calle = SupabaseParse.requireString(res['calle'], 'calle');
-      final nro = SupabaseParse.requireInt(res['nro_direccion'], 'nro_direccion');
+      final nroMostrar = ChileFormat.nroDireccionMostrar(res['nro_direccion']);
       final unidad = SupabaseParse.asString(rv['unidad']);
       final descDepto = SupabaseParse.asString(rv['desc_depto_cond']);
 
-      final direccion = _armarDireccion(calle, nro, unidad, descDepto, comuna);
+      final direccion = _armarDireccion(calle, nroMostrar, unidad, descDepto, comuna);
       final materialDept = (descDepto != null && descDepto.isNotEmpty)
           ? descDepto
           : await _materialPrimerPiso(idRegistro);
@@ -94,7 +86,7 @@ class DetalleResidenciaService {
         materialDepartamento: materialDept.isEmpty ? '—' : materialDept,
         instruccionesEspeciales: SupabaseParse.asString(rv['notas_v']),
         fechaUltimaActualizacion: _parseFecha(rv['fecha_ult_confirm']),
-        telefonoTitular: SupabaseParse.asString(gf?['telefono_titular']) ?? '—',
+        telefonoTitular: ChileFormat.formatearTelefono(SupabaseParse.asString(gf?['telefono_titular'])),
         cantidadPersonas: personas.length,
         cantidadMascotas: mascotas.length,
         cantidadConCondiciones: conCondiciones,
@@ -133,12 +125,12 @@ class DetalleResidenciaService {
 
   static String _armarDireccion(
     String calle,
-    int nro,
+    String nroMostrar,
     String? unidad,
     String? descDepto,
     String comuna,
   ) {
-    final partes = <String>['$calle $nro'];
+    final partes = <String>['$calle $nroMostrar'];
     if (unidad != null && unidad.isNotEmpty) {
       partes.add(unidad);
     } else if (descDepto != null && descDepto.isNotEmpty) {

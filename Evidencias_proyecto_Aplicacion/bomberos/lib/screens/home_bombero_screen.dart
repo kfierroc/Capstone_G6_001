@@ -383,7 +383,7 @@ class _HomeBomberoScreenState extends State<HomeBomberoScreen> {
             textInputAction: TextInputAction.search,
             onSubmitted: (_) => _buscar(),
             decoration: const InputDecoration(
-              hintText: 'Ej: Av. Libertador 1234, Las Condes',
+              hintText: 'Ej: Av. Libertador 1234 o solo 1234',
             ),
           ),
           const SizedBox(height: 14),

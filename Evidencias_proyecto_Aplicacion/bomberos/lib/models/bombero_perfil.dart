@@ -1,3 +1,5 @@
+import '../utils/chile_format.dart';
+
 /// Perfil mínimo desde la tabla `bombero`.
 class BomberoPerfil {
   BomberoPerfil({
@@ -18,17 +20,7 @@ class BomberoPerfil {
 
   String get nombreCompleto => '$nombBombero $apePBombero'.trim();
 
-  String get rutMostrar {
-    var s = rutNum.toString();
-    final partes = <String>[];
-    while (s.length > 3) {
-      partes.add(s.substring(s.length - 3));
-      s = s.substring(0, s.length - 3);
-    }
-    if (s.isNotEmpty) partes.add(s);
-    final cuerpo = partes.reversed.join('.');
-    return '$cuerpo-${rutDv.toUpperCase()}';
-  }
+  String get rutMostrar => ChileFormat.formatearRut(rutNum, rutDv);
 
   factory BomberoPerfil.fromMap(Map<String, dynamic> m) {
     return BomberoPerfil(

@@ -179,13 +179,60 @@ class MapaGrifoService {
       latCentro: lat,
       lonCentro: lon,
       radioMetros: radioMetros,
-      limiteMaximo: 40,
+      limiteMaximo: limite * 5,
     );
     final operativos = todos
         .where((g) => g.estado.toLowerCase().contains('operativo'))
         .toList();
     if (operativos.length <= limite) return operativos;
     return operativos.sublist(0, limite);
+  }
+
+  /// Todos los grifos con información vigente en una comuna.
+  Future<List<GrifoMapaResultado>> listarPorComuna(int cutCom) async {
+    try {
+      final rawGrifos = await _client
+          .from('grifo')
+          .select('id_grifo, lat, lon, cut_com')
+          .eq('cut_com', cutCom);
+
+      final rows = List<Map<String, dynamic>>.from(rawGrifos as List);
+      if (rows.isEmpty) return [];
+
+      final ids = rows.map((r) => SupabaseParse.requireInt(r['id_grifo'], 'id_grifo')).toList();
+      final infoPorGrifo = await _ultimaInfoPorGrifo(ids);
+      final comunas = await _mapaComunas({cutCom});
+      final comunaNombre = comunas[cutCom] ?? 'Comuna $cutCom';
+
+      final resultados = <GrifoMapaResultado>[];
+      for (final g in rows) {
+        final id = SupabaseParse.requireInt(g['id_grifo'], 'id_grifo');
+        final info = infoPorGrifo[id];
+        if (info == null) continue;
+
+        resultados.add(
+          GrifoMapaResultado(
+            idGrifo: id,
+            lat: SupabaseParse.requireDouble(g['lat'], 'lat'),
+            lon: SupabaseParse.requireDouble(g['lon'], 'lon'),
+            cutCom: cutCom,
+            comunaNombre: comunaNombre,
+            estado: info.estado,
+            idEstadoGr: info.idEstadoGr,
+            fechaRegistro: info.fechaRegistro,
+            notas: info.notas,
+            reportadoPor: info.reportadoPor,
+          ),
+        );
+      }
+
+      resultados.sort((a, b) => a.idGrifo.compareTo(b.idGrifo));
+      return resultados;
+    } on FormatException catch (e) {
+      throw MapaGrifoException(e.message);
+    } on PostgrestException catch (e) {
+      throw MapaGrifoException(e.message);
+    }
   }
 
   Future<List<GrifoMapaResultado>> buscarEnArea({
@@ -196,9 +243,82 @@ class MapaGrifoService {
   }) async {
     final radio = radioMetros.toDouble();
     final bbox = GeoUtils.boundingBox(latCentro, lonCentro, radio);
-    final tope = (limiteMaximo * 4).clamp(20, 150);
 
     try {
+      final candidatosConDist = await _grifosEnRadioOrdenados(
+        latCentro: latCentro,
+        lonCentro: lonCentro,
+        radioMetros: radio,
+        bbox: bbox,
+      );
+      if (candidatosConDist.isEmpty) return [];
+
+      final resultados = <GrifoMapaResultado>[];
+      final comunasCache = <int, String>{};
+      var indice = 0;
+
+      while (resultados.length < limiteMaximo && indice < candidatosConDist.length) {
+        final fin = (indice + 50).clamp(0, candidatosConDist.length);
+        final lote = candidatosConDist.sublist(indice, fin);
+        indice = fin;
+
+        final ids = lote.map((c) => SupabaseParse.requireInt(c.row['id_grifo'], 'id_grifo')).toList();
+        final infoPorGrifo = await _ultimaInfoPorGrifo(ids);
+
+        final cutsNuevos = lote
+            .map((c) => SupabaseParse.requireInt(c.row['cut_com'], 'cut_com'))
+            .where((cut) => !comunasCache.containsKey(cut))
+            .toSet();
+        if (cutsNuevos.isNotEmpty) {
+          comunasCache.addAll(await _mapaComunas(cutsNuevos));
+        }
+
+        for (final c in lote) {
+          final g = c.row;
+          final id = SupabaseParse.requireInt(g['id_grifo'], 'id_grifo');
+          final info = infoPorGrifo[id];
+          if (info == null) continue;
+
+          final cut = SupabaseParse.requireInt(g['cut_com'], 'cut_com');
+          resultados.add(
+            GrifoMapaResultado(
+              idGrifo: id,
+              lat: SupabaseParse.requireDouble(g['lat'], 'lat'),
+              lon: SupabaseParse.requireDouble(g['lon'], 'lon'),
+              cutCom: cut,
+              comunaNombre: comunasCache[cut] ?? 'Comuna $cut',
+              estado: info.estado,
+              idEstadoGr: info.idEstadoGr,
+              fechaRegistro: info.fechaRegistro,
+              notas: info.notas,
+              reportadoPor: info.reportadoPor,
+            ),
+          );
+          if (resultados.length >= limiteMaximo) break;
+        }
+      }
+
+      return resultados;
+    } on FormatException catch (e) {
+      throw MapaGrifoException(e.message);
+    } on PostgrestException catch (e) {
+      throw MapaGrifoException(e.message);
+    }
+  }
+
+  /// Todos los grifos dentro del radio, ordenados por distancia al centro (más cercano primero).
+  Future<List<({Map<String, dynamic> row, double distanciaMetros})>> _grifosEnRadioOrdenados({
+    required double latCentro,
+    required double lonCentro,
+    required double radioMetros,
+    required ({double minLat, double maxLat, double minLon, double maxLon}) bbox,
+  }) async {
+    const pageSize = 200;
+    const maxFilas = 2000;
+    var offset = 0;
+    final candidatos = <({Map<String, dynamic> row, double distanciaMetros})>[];
+
+    while (offset < maxFilas) {
       final rawGrifos = await _client
           .from('grifo')
           .select('id_grifo, lat, lon, cut_com')
@@ -206,66 +326,28 @@ class MapaGrifoService {
           .lte('lat', bbox.maxLat)
           .gte('lon', bbox.minLon)
           .lte('lon', bbox.maxLon)
-          .limit(tope);
+          .range(offset, offset + pageSize - 1);
 
-      final candidatos = <Map<String, dynamic>>[];
-      for (final row in List<Map<String, dynamic>>.from(rawGrifos as List)) {
+      final batch = List<Map<String, dynamic>>.from(rawGrifos as List);
+      if (batch.isEmpty) break;
+
+      for (final row in batch) {
         final lat = SupabaseParse.asDouble(row['lat']);
         final lon = SupabaseParse.asDouble(row['lon']);
         if (lat == null || lon == null) continue;
-        if (GeoUtils.distanciaMetros(latCentro, lonCentro, lat, lon) <= radio) {
-          candidatos.add(row);
+
+        final dist = GeoUtils.distanciaMetros(latCentro, lonCentro, lat, lon);
+        if (dist <= radioMetros) {
+          candidatos.add((row: row, distanciaMetros: dist));
         }
       }
-      if (candidatos.isEmpty) return [];
 
-      final ids = candidatos.map((r) => SupabaseParse.requireInt(r['id_grifo'], 'id_grifo')).toList();
-      final infoPorGrifo = await _ultimaInfoPorGrifo(ids);
-
-      final cuts = candidatos.map((r) => SupabaseParse.requireInt(r['cut_com'], 'cut_com')).toSet();
-      final comunas = await _mapaComunas(cuts);
-
-      final resultados = <GrifoMapaResultado>[];
-      for (final g in candidatos) {
-        final id = SupabaseParse.requireInt(g['id_grifo'], 'id_grifo');
-        final info = infoPorGrifo[id];
-        if (info == null) continue;
-
-        final cut = SupabaseParse.requireInt(g['cut_com'], 'cut_com');
-        final lat = SupabaseParse.requireDouble(g['lat'], 'lat');
-        final lon = SupabaseParse.requireDouble(g['lon'], 'lon');
-
-        resultados.add(
-          GrifoMapaResultado(
-            idGrifo: id,
-            lat: lat,
-            lon: lon,
-            cutCom: cut,
-            comunaNombre: comunas[cut] ?? 'Comuna $cut',
-            estado: info.estado,
-            idEstadoGr: info.idEstadoGr,
-            fechaRegistro: info.fechaRegistro,
-            notas: info.notas,
-            reportadoPor: info.reportadoPor,
-          ),
-        );
-      }
-
-      resultados.sort((a, b) {
-        final da = GeoUtils.distanciaMetros(latCentro, lonCentro, a.lat, a.lon);
-        final db = GeoUtils.distanciaMetros(latCentro, lonCentro, b.lat, b.lon);
-        return da.compareTo(db);
-      });
-
-      if (resultados.length > limiteMaximo) {
-        return resultados.sublist(0, limiteMaximo);
-      }
-      return resultados;
-    } on FormatException catch (e) {
-      throw MapaGrifoException(e.message);
-    } on PostgrestException catch (e) {
-      throw MapaGrifoException(e.message);
+      if (batch.length < pageSize) break;
+      offset += pageSize;
     }
+
+    candidatos.sort((a, b) => a.distanciaMetros.compareTo(b.distanciaMetros));
+    return candidatos;
   }
 
   Future<Map<int, _InfoGrifo>> _ultimaInfoPorGrifo(List<int> idsGrifo) async {

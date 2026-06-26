@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import 'auth/auth_gate.dart';
 import 'config/maps_loader.dart';
-import 'login/login_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -58,7 +58,7 @@ class BomberosApp extends StatelessWidget {
           hintStyle: const TextStyle(color: Color(0xFF9E9E9E), fontSize: 14),
         ),
       ),
-      home: const LoginScreen(),
+      home: const AuthGate(),
     );
   }
 }

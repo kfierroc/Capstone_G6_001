@@ -43,11 +43,21 @@ class _RegistroPaso2State extends State<RegistroPaso2> {
   void _continuar() {
     final nom = _nombreController.text.trim();
     final ape = _apellidoController.text.trim();
-    final parsed = parsearRutChileno(_rutController.text);
+    final rutTexto = _rutController.text.trim();
+
     if (nom.isEmpty || ape.isEmpty) {
       _showSnack('Completa nombre y apellido.');
       return;
     }
+    if (!rutChilenoTieneGuion(rutTexto)) {
+      _showSnack('El RUT debe incluir guion y dígito verificador (ej. 2.022.222-2).');
+      return;
+    }
+    if (!rutChilenoLongitudValida(rutTexto)) {
+      _showSnack('El RUT debe tener entre 8 y 9 dígitos (ej. 2.022.222-2 o 20.222.222-2).');
+      return;
+    }
+    final parsed = parsearRutChileno(rutTexto);
     if (parsed == null) {
       _showSnack('RUT inválido.');
       return;
@@ -91,7 +101,7 @@ class _RegistroPaso2State extends State<RegistroPaso2> {
           controller: _rutController,
           keyboardType: TextInputType.text,
           inputFormatters: [ChileRutInputFormatter()],
-          decoration: bomberosRegistroFieldDecoration(hint: '12.345.678-9'),
+          decoration: bomberosRegistroFieldDecoration(hint: '2.022.222-2'),
         ),
         const SizedBox(height: 28),
         Row(

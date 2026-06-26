@@ -101,11 +101,13 @@ class BomberosRegistroStepIndicator extends StatelessWidget {
           Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
+              const SizedBox(width: 44),
               circulo(1),
               linea(currentStep >= 2),
               circulo(2),
               linea(currentStep >= 3),
               circulo(3),
+              const SizedBox(width: 44),
             ],
           ),
           const SizedBox(height: 10),

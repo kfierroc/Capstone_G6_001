@@ -98,27 +98,8 @@ class _MapaResidenciasScreenState extends State<MapaResidenciasScreen> {
       };
 
   Set<Circle> get _circulosEnMapa {
-    final circles = <Circle>{};
-
-    if (!_modoEnfoque) {
-      circles.addAll(_circuloBusqueda);
-    }
-
-    final r = _calloutResidencia;
-    if (r == null) return circles;
-
-    circles.add(
-      Circle(
-        circleId: CircleId('resaltado_${r.idRegistro}'),
-        center: LatLng(r.lat, r.lon),
-        radius: 35,
-        fillColor: const Color(0x44FF9800),
-        strokeColor: const Color(0xFFE65100),
-        strokeWidth: 3,
-        zIndex: 1,
-      ),
-    );
-    return circles;
+    if (_modoEnfoque) return const {};
+    return _circuloBusqueda;
   }
 
   MarkerId _markerId(ResidenciaMapaResultado r) => MarkerId('res_reg_${r.idRegistro}');

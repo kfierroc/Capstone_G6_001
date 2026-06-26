@@ -3,7 +3,6 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../auth/auth_utils.dart';
 import '../auth/bombero_access.dart';
-import '../models/bombero_perfil.dart';
 import '../registro/registro_screen.dart';
 import '../screens/home_bombero_screen.dart';
 import '../widgets/custom_widgets.dart';
@@ -45,17 +44,14 @@ class _LoginScreenState extends State<LoginScreen> {
       );
       if (!mounted) return;
 
-      final row = await obtenerBomberoPorUsuario(client);
-      if (row == null) {
-        await client.auth.signOut();
+      final perfil = await resolverPerfilSesionActual(client);
+      if (perfil == null) {
         if (!mounted) return;
         _showSnack(
           'Esta aplicación es solo para bomberos. Tu cuenta no está registrada en el sistema o falta vincular tu usuario en la tabla bombero.',
         );
         return;
       }
-
-      final perfil = BomberoPerfil.fromMap(row);
       if (!mounted) return;
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute<void>(builder: (_) => HomeBomberoScreen(perfil: perfil)),
