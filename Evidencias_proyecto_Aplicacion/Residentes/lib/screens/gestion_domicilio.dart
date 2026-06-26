@@ -434,16 +434,23 @@ class _GestionDomicilioScreenState extends State<GestionDomicilioScreen> {
   void _editarNotas() {
     final dom = _dom;
     if (dom == null) return;
-    final ctrl = TextEditingController(text: dom.notasV ?? '');
+    final texto = dom.notasV ?? '';
+    final ctrl = TextEditingController(text: texto);
+    final lineasIniciales = texto.trim().isEmpty
+        ? 1
+        : texto.split('\n').length.clamp(1, 5);
     showDialog<void>(
       context: context,
       builder: (dialogContext) => StatefulDialogScope(
         controllers: [ctrl],
         builder: (_) => AlertDialog(
           title: const Text('Instrucciones especiales', style: TextStyle(fontWeight: FontWeight.w700)),
+          contentPadding: const EdgeInsets.fromLTRB(24, 12, 24, 0),
           content: CampoNotasDomicilio(
             controller: ctrl,
-            maxLines: 4,
+            minLines: lineasIniciales,
+            maxLines: 5,
+            compacto: true,
             hintText: 'Información útil para emergencias (máx. ${CampoNotasDomicilio.maxCaracteres} caracteres)',
           ),
           actions: [

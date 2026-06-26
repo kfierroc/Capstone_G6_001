@@ -46,6 +46,12 @@ class _GrifosListaTabState extends State<GrifosListaTab> {
 
   GrifoFiltroEstado _filtroEstado = GrifoFiltroEstado.todos;
 
+  Map<String, int> _estadisticas = GrifoListaUtils.estadisticasVacias();
+  int? _cutComActiva;
+  int _cursorGrifo = 0;
+  bool _hayMas = false;
+  bool _cargandoMas = false;
+
   @override
   void initState() {
     super.initState();
@@ -152,12 +158,27 @@ class _GrifosListaTabState extends State<GrifosListaTab> {
 
     setState(() => _buscandoComuna = true);
     try {
-      final lista = await _svc.listarPorComuna(_cutComSeleccionada!);
+      final cutCom = _cutComSeleccionada!;
+      final statsFuture = _svc.estadisticasPorComuna(cutCom);
+      final paginaFuture = _svc.listarPorComunaPaginado(
+        cutCom: cutCom,
+        cursorGrifo: 0,
+        filtro: _filtroEstado,
+      );
+      final stats = await statsFuture;
+      final pagina = await paginaFuture;
       if (!mounted) return;
 
-      widget.onResultados(lista);
-      if (lista.isEmpty) {
-        final nombre = _comunas.where((c) => c.cutCom == _cutComSeleccionada).map((c) => c.nombre).firstOrNull;
+      setState(() {
+        _cutComActiva = cutCom;
+        _cursorGrifo = pagina.siguienteCursor;
+        _hayMas = pagina.hayMas;
+        _estadisticas = stats;
+      });
+      widget.onResultados(pagina.items);
+
+      if (pagina.items.isEmpty && GrifoListaUtils.totalParaFiltro(stats, _filtroEstado) == 0) {
+        final nombre = _comunas.where((c) => c.cutCom == cutCom).map((c) => c.nombre).firstOrNull;
         _snack('No hay grifos registrados en ${nombre ?? 'la comuna seleccionada'}.');
       }
     } on MapaGrifoException catch (e) {
@@ -166,6 +187,40 @@ class _GrifosListaTabState extends State<GrifosListaTab> {
       if (mounted) _snack('Error al buscar grifos: $e');
     } finally {
       if (mounted) setState(() => _buscandoComuna = false);
+    }
+  }
+
+  Future<void> _cargarMasComuna() async {
+    final cutCom = _cutComActiva ?? _cutComSeleccionada;
+    if (cutCom == null || !_hayMas || _cargandoMas) return;
+
+    setState(() => _cargandoMas = true);
+    try {
+      final pagina = await _svc.listarPorComunaPaginado(
+        cutCom: cutCom,
+        cursorGrifo: _cursorGrifo,
+        filtro: _filtroEstado,
+      );
+      if (!mounted) return;
+
+      widget.onResultados([...widget.resultados, ...pagina.items]);
+      setState(() {
+        _cursorGrifo = pagina.siguienteCursor;
+        _hayMas = pagina.hayMas;
+      });
+    } on MapaGrifoException catch (e) {
+      if (mounted) _snack(e.message);
+    } catch (e) {
+      if (mounted) _snack('Error al cargar más grifos: $e');
+    } finally {
+      if (mounted) setState(() => _cargandoMas = false);
+    }
+  }
+
+  void _onFiltroEstadoChanged(GrifoFiltroEstado filtro) {
+    setState(() => _filtroEstado = filtro);
+    if (!_busquedaLibre && _cutComSeleccionada != null) {
+      _buscarPorComuna();
     }
   }
 
@@ -197,11 +252,23 @@ class _GrifosListaTabState extends State<GrifosListaTab> {
 
       if (grifo == null) {
         widget.onResultados([]);
+        setState(() {
+          _estadisticas = GrifoListaUtils.estadisticasVacias();
+          _hayMas = false;
+          _cursorGrifo = 0;
+          _cutComActiva = null;
+        });
         _snack(_busquedaLibre
             ? 'No se encontró el grifo #$id.'
             : 'No se encontró el grifo #$id en la comuna seleccionada.');
       } else {
         widget.onResultados([grifo]);
+        setState(() {
+          _estadisticas = GrifoListaUtils.estadisticas([grifo]);
+          _hayMas = false;
+          _cursorGrifo = 0;
+          _cutComActiva = grifo.cutCom;
+        });
       }
     } on MapaGrifoException catch (e) {
       if (mounted) _snack(e.message);
@@ -351,9 +418,13 @@ class _GrifosListaTabState extends State<GrifosListaTab> {
                 const SizedBox(height: 20),
                 GrifosPanelResultados(
                   resultados: widget.resultados,
+                  estadisticas: _estadisticas,
                   filtro: _filtroEstado,
-                  onFiltroChanged: (f) => setState(() => _filtroEstado = f),
+                  onFiltroChanged: _onFiltroEstadoChanged,
                   onEditar: widget.onEditar,
+                  hayMas: _hayMas,
+                  cargandoMas: _cargandoMas,
+                  onCargarMas: _cargarMasComuna,
                 ),
                 const SizedBox(height: 24),
               ],

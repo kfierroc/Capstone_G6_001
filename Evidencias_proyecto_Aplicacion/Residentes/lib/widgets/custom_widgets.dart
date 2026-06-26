@@ -277,17 +277,22 @@ class InputLabel extends StatelessWidget {
 }
 
 /// Campo de notas del domicilio con límite y contador (ej. 20/100).
+/// Crece con el texto entre [minLines] y [maxLines].
 class CampoNotasDomicilio extends StatelessWidget {
   static const int maxCaracteres = 100;
 
   final TextEditingController controller;
+  final int minLines;
   final int maxLines;
   final String hintText;
+  final bool compacto;
 
   const CampoNotasDomicilio({
     super.key,
     required this.controller,
-    this.maxLines = 3,
+    this.minLines = 1,
+    this.maxLines = 5,
+    this.compacto = false,
     this.hintText =
         'Información adicional relevante para bomberos (accesos especiales, llaves, etc.)',
   });
@@ -296,8 +301,10 @@ class CampoNotasDomicilio extends StatelessWidget {
   Widget build(BuildContext context) {
     return TextField(
       controller: controller,
+      minLines: minLines,
       maxLines: maxLines,
       maxLength: maxCaracteres,
+      textAlignVertical: TextAlignVertical.top,
       buildCounter: (
         context, {
         required currentLength,
@@ -305,7 +312,7 @@ class CampoNotasDomicilio extends StatelessWidget {
         maxLength,
       }) {
         return Padding(
-          padding: const EdgeInsets.only(top: 4),
+          padding: EdgeInsets.only(top: compacto ? 2 : 4),
           child: Align(
             alignment: Alignment.centerRight,
             child: Text(
@@ -321,6 +328,11 @@ class CampoNotasDomicilio extends StatelessWidget {
       },
       decoration: InputDecoration(
         hintText: hintText,
+        isDense: compacto,
+        alignLabelWithHint: true,
+        contentPadding: compacto
+            ? const EdgeInsets.symmetric(horizontal: 12, vertical: 10)
+            : const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       ),
     );
   }

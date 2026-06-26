@@ -37,3 +37,17 @@ class EstadoGrifoOpcion {
   final int id;
   final String nombre;
 }
+
+/// Página de grifos desde el servidor (carga incremental).
+class GrifoPaginaResultado {
+  GrifoPaginaResultado({
+    required this.items,
+    required this.siguienteCursor,
+    required this.hayMas,
+  });
+
+  final List<GrifoMapaResultado> items;
+  /// Índice para la siguiente consulta (offset en tabla o en lista de IDs).
+  final int siguienteCursor;
+  final bool hayMas;
+}

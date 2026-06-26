@@ -1,5 +1,6 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../models/grifo_filtro_estado.dart';
 import '../models/grifo_mapa.dart';
 import '../utils/geo_utils.dart';
 import '../utils/supabase_parse.dart';
@@ -54,7 +55,241 @@ class MapaGrifoService {
     return list;
   }
 
+  /// Estadísticas reales por comuna (solo estados vigentes, sin cargar detalle completo).
+  Future<Map<String, int>> estadisticasPorComuna(int cutCom) async {
+    final ids = await _idsGrifoEnComuna(cutCom);
+    return estadisticasPorIdsGrifo(ids);
+  }
+
+  /// Estadísticas reales de los grifos vinculados a un bombero.
+  Future<Map<String, int>> estadisticasPorBombero(int rutNum) async {
+    final ids = await _idsGrifoPorBomberoOrdenados(rutNum);
+    return estadisticasPorIdsGrifo(ids);
+  }
+
+  /// Carga paginada por comuna: solo [limite] grifos por consulta (20 por defecto).
+  Future<GrifoPaginaResultado> listarPorComunaPaginado({
+    required int cutCom,
+    required int cursorGrifo,
+    GrifoFiltroEstado filtro = GrifoFiltroEstado.todos,
+    int limite = kGrifosListaPagina,
+  }) async {
+    try {
+      const tamLote = 40;
+      final items = <GrifoMapaResultado>[];
+      var cursor = cursorGrifo;
+      var agotado = false;
+
+      final comunas = await _mapaComunas({cutCom});
+      final comunaNombre = comunas[cutCom] ?? 'Comuna $cutCom';
+
+      while (items.length < limite && !agotado) {
+        final rawGrifos = await _client
+            .from('grifo')
+            .select('id_grifo, lat, lon, cut_com')
+            .eq('cut_com', cutCom)
+            .order('id_grifo')
+            .range(cursor, cursor + tamLote - 1);
+
+        final batch = List<Map<String, dynamic>>.from(rawGrifos as List);
+        if (batch.isEmpty) {
+          agotado = true;
+          break;
+        }
+
+        final ids = batch.map((r) => SupabaseParse.requireInt(r['id_grifo'], 'id_grifo')).toList();
+        final infoPorGrifo = await _ultimaInfoPorGrifo(ids);
+
+        for (final g in batch) {
+          final id = SupabaseParse.requireInt(g['id_grifo'], 'id_grifo');
+          final info = infoPorGrifo[id];
+          if (info == null) continue;
+          if (!grifoCoincideFiltro(info.estado, filtro)) continue;
+
+          items.add(
+            GrifoMapaResultado(
+              idGrifo: id,
+              lat: SupabaseParse.requireDouble(g['lat'], 'lat'),
+              lon: SupabaseParse.requireDouble(g['lon'], 'lon'),
+              cutCom: cutCom,
+              comunaNombre: comunaNombre,
+              estado: info.estado,
+              idEstadoGr: info.idEstadoGr,
+              fechaRegistro: info.fechaRegistro,
+              notas: info.notas,
+              reportadoPor: info.reportadoPor,
+            ),
+          );
+          if (items.length >= limite) break;
+        }
+
+        cursor += batch.length;
+        if (batch.length < tamLote) agotado = true;
+      }
+
+      return GrifoPaginaResultado(
+        items: items,
+        siguienteCursor: cursor,
+        hayMas: !agotado,
+      );
+    } on PostgrestException catch (e) {
+      throw MapaGrifoException(e.message);
+    } on FormatException catch (e) {
+      throw MapaGrifoException(e.message);
+    }
+  }
+
+  /// Carga paginada de grifos del bombero (20 por defecto).
+  Future<GrifoPaginaResultado> listarPorBomberoPaginado({
+    required int rutNum,
+    required int cursorIds,
+    GrifoFiltroEstado filtro = GrifoFiltroEstado.todos,
+    int limite = kGrifosListaPagina,
+  }) async {
+    try {
+      final todosIds = await _idsGrifoPorBomberoOrdenados(rutNum);
+      if (cursorIds >= todosIds.length) {
+        return GrifoPaginaResultado(items: [], siguienteCursor: cursorIds, hayMas: false);
+      }
+
+      final items = <GrifoMapaResultado>[];
+      var cursor = cursorIds;
+
+      while (items.length < limite && cursor < todosIds.length) {
+        final fin = (cursor + 30).clamp(0, todosIds.length);
+        final loteIds = todosIds.sublist(cursor, fin);
+        cursor = fin;
+
+        final lote = await _grifosDesdeIds(loteIds, filtro: filtro);
+        for (final g in lote) {
+          items.add(g);
+          if (items.length >= limite) break;
+        }
+      }
+
+      return GrifoPaginaResultado(
+        items: items,
+        siguienteCursor: cursor,
+        hayMas: cursor < todosIds.length,
+      );
+    } on PostgrestException catch (e) {
+      throw MapaGrifoException(e.message);
+    } on FormatException catch (e) {
+      throw MapaGrifoException(e.message);
+    }
+  }
+
+  Future<Map<String, int>> estadisticasPorIdsGrifo(List<int> ids) async {
+    if (ids.isEmpty) return grifoEstadisticasVacias();
+
+    final estados = <String>[];
+    const chunk = 100;
+    for (var i = 0; i < ids.length; i += chunk) {
+      final fin = (i + chunk).clamp(0, ids.length);
+      final slice = ids.sublist(i, fin);
+      final info = await _ultimaInfoPorGrifo(slice);
+      for (final id in slice) {
+        final item = info[id];
+        if (item != null) estados.add(item.estado);
+      }
+    }
+    return grifoEstadisticasDesdeEstados(estados);
+  }
+
+  Future<List<int>> _idsGrifoEnComuna(int cutCom) async {
+    const pageSize = 500;
+    var offset = 0;
+    final ids = <int>[];
+
+    while (true) {
+      final raw = await _client
+          .from('grifo')
+          .select('id_grifo')
+          .eq('cut_com', cutCom)
+          .order('id_grifo')
+          .range(offset, offset + pageSize - 1);
+
+      final batch = List<Map<String, dynamic>>.from(raw as List);
+      if (batch.isEmpty) break;
+
+      for (final row in batch) {
+        final id = SupabaseParse.asInt(row['id_grifo']);
+        if (id != null) ids.add(id);
+      }
+
+      if (batch.length < pageSize) break;
+      offset += pageSize;
+    }
+    return ids;
+  }
+
+  Future<List<int>> _idsGrifoPorBomberoOrdenados(int rutNum) async {
+    final raw = await _client
+        .from('info_grifo')
+        .select('id_grifo, fecha_registro')
+        .eq('rut_num', rutNum)
+        .order('fecha_registro', ascending: false);
+
+    final vistos = <int>{};
+    final ids = <int>[];
+    for (final row in List<Map<String, dynamic>>.from(raw as List)) {
+      final id = SupabaseParse.asInt(row['id_grifo']);
+      if (id == null || vistos.contains(id)) continue;
+      vistos.add(id);
+      ids.add(id);
+    }
+    return ids;
+  }
+
+  Future<List<GrifoMapaResultado>> _grifosDesdeIds(
+    List<int> ids, {
+    GrifoFiltroEstado filtro = GrifoFiltroEstado.todos,
+  }) async {
+    if (ids.isEmpty) return [];
+
+    final rawGrifos = await _client
+        .from('grifo')
+        .select('id_grifo, lat, lon, cut_com')
+        .inFilter('id_grifo', ids);
+
+    final rows = List<Map<String, dynamic>>.from(rawGrifos as List);
+    if (rows.isEmpty) return [];
+
+    final infoPorGrifo = await _ultimaInfoPorGrifo(ids);
+    final cuts = rows.map((r) => SupabaseParse.requireInt(r['cut_com'], 'cut_com')).toSet();
+    final comunas = await _mapaComunas(cuts);
+
+    final resultados = <GrifoMapaResultado>[];
+    for (final g in rows) {
+      final id = SupabaseParse.requireInt(g['id_grifo'], 'id_grifo');
+      final info = infoPorGrifo[id];
+      if (info == null) continue;
+      if (!grifoCoincideFiltro(info.estado, filtro)) continue;
+
+      final cut = SupabaseParse.requireInt(g['cut_com'], 'cut_com');
+      resultados.add(
+        GrifoMapaResultado(
+          idGrifo: id,
+          lat: SupabaseParse.requireDouble(g['lat'], 'lat'),
+          lon: SupabaseParse.requireDouble(g['lon'], 'lon'),
+          cutCom: cut,
+          comunaNombre: comunas[cut] ?? 'Comuna $cut',
+          estado: info.estado,
+          idEstadoGr: info.idEstadoGr,
+          fechaRegistro: info.fechaRegistro,
+          notas: info.notas,
+          reportadoPor: info.reportadoPor,
+        ),
+      );
+    }
+
+    final orden = {for (var i = 0; i < ids.length; i++) ids[i]: i};
+    resultados.sort((a, b) => (orden[a.idGrifo] ?? 0).compareTo(orden[b.idGrifo] ?? 0));
+    return resultados;
+  }
+
   /// Grifos vinculados al bombero ([rutNum] en `info_grifo`), con estado actual.
+  /// Preferir [listarPorBomberoPaginado] para listas largas.
   Future<List<GrifoMapaResultado>> listarPorBombero(int rutNum) async {
     try {
       final rawInfo = await _client.from('info_grifo').select('id_grifo').eq('rut_num', rutNum);
@@ -189,6 +424,7 @@ class MapaGrifoService {
   }
 
   /// Todos los grifos con información vigente en una comuna.
+  /// Preferir [listarPorComunaPaginado] para listas largas.
   Future<List<GrifoMapaResultado>> listarPorComuna(int cutCom) async {
     try {
       final rawGrifos = await _client

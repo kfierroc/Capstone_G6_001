@@ -2,6 +2,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../models/grupo_familiar_detalle.dart';
 import '../models/grupo_familiar_list_item.dart';
+import '../models/pagina_lista.dart';
 import '../utils/rut_utils.dart';
 
 class GrupoFamiliarService {
@@ -10,19 +11,88 @@ class GrupoFamiliarService {
   final SupabaseClient _client;
 
   Future<List<GrupoFamiliarListItem>> listarGrupos() async {
-    try {
-      final raw = await _client
-          .from('grupofamiliar')
-          .select(
-            'id_grupof, rut_titular, rut_dv, telefono_titular, fecha_creacion, '
-            'registro_v(vigente, unidad, desc_depto_cond, residencia(calle, nro_direccion, cut_com))',
-          )
-          .order('fecha_creacion', ascending: false);
+    final pag = await listarGruposPaginado(offset: 0, limit: 10000);
+    return pag.items;
+  }
 
-      return raw.map(_mapListItem).whereType<GrupoFamiliarListItem>().toList();
-    } catch (_) {
-      return [];
+  /// Página de grupos familiares (máx. [limit], por defecto 20).
+  Future<PaginaLista<GrupoFamiliarListItem>> listarGruposPaginado({
+    required int offset,
+    int limit = kTamanoPaginaLista,
+    int? cutCom,
+    List<int>? cutComsRegion,
+    int? idGrupofExacto,
+  }) async {
+    if (cutComsRegion != null && cutComsRegion.isEmpty) {
+      return const PaginaLista(items: [], hayMas: false);
     }
+
+    final filtroUbicacion = cutCom != null || cutComsRegion != null;
+    try {
+      return await _listarGruposPagina(
+        offset: offset,
+        limit: limit,
+        cutCom: cutCom,
+        cutComsRegion: cutComsRegion,
+        idGrupofExacto: idGrupofExacto,
+        filtroUbicacion: filtroUbicacion,
+      );
+    } catch (_) {
+      if (!filtroUbicacion) {
+        return const PaginaLista(items: [], hayMas: false);
+      }
+      try {
+        return await _listarGruposPagina(
+          offset: offset,
+          limit: limit,
+          cutCom: cutCom,
+          cutComsRegion: cutComsRegion,
+          idGrupofExacto: idGrupofExacto,
+          filtroUbicacion: false,
+        );
+      } catch (_) {
+        return const PaginaLista(items: [], hayMas: false);
+      }
+    }
+  }
+
+  Future<PaginaLista<GrupoFamiliarListItem>> _listarGruposPagina({
+    required int offset,
+    required int limit,
+    int? cutCom,
+    List<int>? cutComsRegion,
+    int? idGrupofExacto,
+    required bool filtroUbicacion,
+  }) async {
+    final pedido = limit + 1;
+    final select = filtroUbicacion
+        ? 'id_grupof, rut_titular, rut_dv, telefono_titular, fecha_creacion, '
+            'registro_v!inner(vigente, unidad, desc_depto_cond, residencia!inner(calle, nro_direccion, cut_com))'
+        : 'id_grupof, rut_titular, rut_dv, telefono_titular, fecha_creacion, '
+            'registro_v(vigente, unidad, desc_depto_cond, residencia(calle, nro_direccion, cut_com))';
+
+    var query = _client.from('grupofamiliar').select(select);
+
+    if (idGrupofExacto != null) {
+      query = query.eq('id_grupof', idGrupofExacto);
+    } else if (filtroUbicacion) {
+      query = query.eq('registro_v.vigente', true);
+      if (cutCom != null) {
+        query = query.eq('registro_v.residencia.cut_com', cutCom);
+      } else if (cutComsRegion != null) {
+        query = query.inFilter('registro_v.residencia.cut_com', cutComsRegion);
+      }
+    }
+
+    final raw = await query
+        .order('fecha_creacion', ascending: false)
+        .order('id_grupof')
+        .range(offset, offset + pedido - 1);
+
+    final hayMas = raw.length > limit;
+    final slice = hayMas ? raw.sublist(0, limit) : raw;
+    final items = slice.map(_mapListItem).whereType<GrupoFamiliarListItem>().toList();
+    return PaginaLista(items: items, hayMas: hayMas);
   }
 
   GrupoFamiliarListItem? _mapListItem(dynamic row) {

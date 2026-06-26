@@ -8,6 +8,7 @@ import '../../utils/filtro_ubicacion_lista.dart';
 import '../../widgets/admin_action_bar.dart';
 import '../../widgets/admin_header.dart';
 import '../../widgets/admin_lista_filtros_ubicacion.dart';
+import '../../widgets/admin_lista_pie_paginacion.dart';
 import 'residencia_edit_screen.dart';
 
 class ResidenciasListScreen extends StatefulWidget {
@@ -28,13 +29,17 @@ class _ResidenciasListScreenState extends State<ResidenciasListScreen> {
   final _filtrosKey = GlobalKey<AdminListaFiltrosUbicacionState>();
   final _idController = TextEditingController();
   final _busquedaController = TextEditingController();
+  final _service = ResidenciasAdminService(Supabase.instance.client);
   List<ResidenciaListItem> _residencias = [];
   bool _loading = true;
+  bool _cargandoMas = false;
+  bool _hayMas = false;
+  int _offset = 0;
 
   @override
   void initState() {
     super.initState();
-    _cargar();
+    _cargarInicial();
   }
 
   @override
@@ -44,14 +49,55 @@ class _ResidenciasListScreenState extends State<ResidenciasListScreen> {
     super.dispose();
   }
 
-  Future<void> _cargar() async {
-    setState(() => _loading = true);
-    final lista = await ResidenciasAdminService(Supabase.instance.client).listarResidencias();
-    if (mounted) {
-      setState(() {
-        _residencias = lista;
-        _loading = false;
-      });
+  Future<void> _cargarInicial() async {
+    setState(() {
+      _loading = true;
+      _residencias = [];
+      _offset = 0;
+      _hayMas = false;
+    });
+    await _cargarPagina(reemplazar: true);
+    if (mounted) setState(() => _loading = false);
+  }
+
+  Future<void> _cargarMas() async {
+    if (_cargandoMas || !_hayMas || _loading) return;
+    setState(() => _cargandoMas = true);
+    await _cargarPagina(reemplazar: false);
+    if (mounted) setState(() => _cargandoMas = false);
+  }
+
+  Future<void> _cargarPagina({required bool reemplazar}) async {
+    final p = parametrosFiltroUbicacion(
+      filtros: _filtrosKey.currentState,
+      idText: _idController.text,
+    );
+    final pag = await _service.listarResidenciasPaginado(
+      offset: _offset,
+      cutCom: p.cutCom,
+      cutComsRegion: p.cutComsRegion,
+      idResidenciaExacto: p.idExacto,
+    );
+    if (!mounted) return;
+    setState(() {
+      if (reemplazar) {
+        _residencias = pag.items;
+      } else {
+        _residencias = [..._residencias, ...pag.items];
+      }
+      _offset = _residencias.length;
+      _hayMas = pag.hayMas;
+    });
+  }
+
+  void _onFiltrosCambiados() => _cargarInicial();
+
+  void _onIdCambiado() {
+    final idText = _idController.text.trim();
+    if (idText.isEmpty || int.tryParse(idText) != null) {
+      _cargarInicial();
+    } else {
+      setState(() {});
     }
   }
 
@@ -61,20 +107,15 @@ class _ResidenciasListScreenState extends State<ResidenciasListScreen> {
 
   List<ResidenciaListItem> get _filtrados {
     final q = _busquedaController.text.trim();
-    final f = _filtrosKey.currentState;
-    final comunaMap = f?.comunaARegion ?? const {};
-    return _residencias.where((r) {
-      if (!filtroUbicacion(
-        cutComItem: r.cutCom,
-        cutRegFiltro: f?.cutRegFiltro,
-        cutComFiltro: f?.cutComFiltro,
-        comunaARegion: comunaMap,
-      )) {
-        return false;
-      }
-      if (!filtroId(id: r.idResidencia, idQuery: _idController.text)) return false;
-      return r.coincideConBusqueda(q);
-    }).toList();
+    final idText = _idController.text.trim();
+    var lista = _residencias;
+    if (idText.isNotEmpty && int.tryParse(idText) == null) {
+      lista = lista.where((r) => filtroId(id: r.idResidencia, idQuery: idText)).toList();
+    }
+    if (q.isNotEmpty) {
+      lista = lista.where((r) => r.coincideConBusqueda(q)).toList();
+    }
+    return lista;
   }
 
   @override
@@ -101,7 +142,9 @@ class _ResidenciasListScreenState extends State<ResidenciasListScreen> {
               busquedaController: _busquedaController,
               idHint: 'ID de residencia',
               busquedaHint: 'Buscar por dirección o estado...',
-              onChanged: () => setState(() {}),
+              onChanged: _onFiltrosCambiados,
+              onIdChanged: _onIdCambiado,
+              onBusquedaChanged: () => setState(() {}),
               trailing: AdminPrimaryButton(
                 label: 'Agregar Residencia',
                 icon: Icons.add,
@@ -124,25 +167,40 @@ class _ResidenciasListScreenState extends State<ResidenciasListScreen> {
                   : filtrados.isEmpty
                       ? Center(
                           child: Text(
-                            _residencias.isEmpty
+                            _residencias.isEmpty && !_hayMas
                                 ? 'No hay residencias registradas.'
-                                : 'Sin resultados para la búsqueda.',
+                                : 'Sin resultados para los filtros aplicados.',
                             style: const TextStyle(color: AdminTheme.mutedText),
                           ),
                         )
-                      : RefreshIndicator(
-                          onRefresh: _cargar,
-                          child: esAncho
-                              ? _TablaDesktop(
-                                  residencias: filtrados,
-                                  onVerDetalle: widget.onVerDetalle,
-                                  onEliminar: () => _proximamente('Eliminar'),
-                                )
-                              : _ListaMobile(
-                                  residencias: filtrados,
-                                  onVerDetalle: widget.onVerDetalle,
-                                  onEliminar: () => _proximamente('Eliminar'),
-                                ),
+                      : Column(
+                          children: [
+                            Expanded(
+                              child: RefreshIndicator(
+                                onRefresh: _cargarInicial,
+                                child: esAncho
+                                    ? _TablaDesktop(
+                                        residencias: filtrados,
+                                        onVerDetalle: widget.onVerDetalle,
+                                        onEliminar: () => _proximamente('Eliminar'),
+                                      )
+                                    : _ListaMobile(
+                                        residencias: filtrados,
+                                        onVerDetalle: widget.onVerDetalle,
+                                        onEliminar: () => _proximamente('Eliminar'),
+                                      ),
+                              ),
+                            ),
+                            if (_hayMas || _cargandoMas)
+                              AdminListaPiePaginacion(
+                                totalMostrado: _residencias.length,
+                                etiquetaSingular: 'residencia',
+                                etiquetaPlural: 'residencias',
+                                hayMas: _hayMas,
+                                cargandoMas: _cargandoMas,
+                                onCargarMas: _cargarMas,
+                              ),
+                          ],
                         ),
             ),
           ),
@@ -173,6 +231,7 @@ class _TablaDesktop extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ListView(
+      physics: const AlwaysScrollableScrollPhysics(),
       children: [
         const Padding(
           padding: EdgeInsets.fromLTRB(20, 16, 20, 12),
@@ -317,6 +376,7 @@ class _ListaMobile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ListView.separated(
+      physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.all(16),
       itemCount: residencias.length,
       separatorBuilder: (_, _) => const SizedBox(height: 12),

@@ -1,6 +1,7 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../models/bombero_list_item.dart';
+import '../models/pagina_lista.dart';
 import '../utils/rut_utils.dart';
 
 class BomberosAdminService {
@@ -9,62 +10,84 @@ class BomberosAdminService {
   final SupabaseClient _client;
 
   Future<List<BomberoListItem>> listarBomberos() async {
-    try {
-      final raw = await _client
-          .from('bombero')
-          .select(
-            'rut_num, rut_dv, nomb_bombero, ape_p_bombero, is_admin, user_id, '
-            'companias_bomberos(nombre, id_compania, cut_com, comunas(comuna))',
-          )
-          .order('ape_p_bombero')
-          .order('nomb_bombero');
+    final pag = await listarBomberosPaginado(offset: 0, limit: 10000);
+    return pag.items;
+  }
 
-      return raw.map(_mapItem).whereType<BomberoListItem>().toList();
+  /// Página de bomberos (máx. [limit], por defecto 20).
+  Future<PaginaLista<BomberoListItem>> listarBomberosPaginado({
+    required int offset,
+    int limit = kTamanoPaginaLista,
+  }) async {
+    try {
+      return await _listarBomberosPagina(offset: offset, limit: limit, conEmbedComuna: true);
     } catch (_) {
-      return await _listarSinEmbedComuna();
+      try {
+        return await _listarBomberosPagina(offset: offset, limit: limit, conEmbedComuna: false);
+      } catch (_) {
+        return const PaginaLista(items: [], hayMas: false);
+      }
     }
   }
 
-  Future<List<BomberoListItem>> _listarSinEmbedComuna() async {
-    try {
-      final raw = await _client
-          .from('bombero')
-          .select(
-            'rut_num, rut_dv, nomb_bombero, ape_p_bombero, is_admin, user_id, '
-            'companias_bomberos(nombre, id_compania, cut_com)',
-          )
-          .order('ape_p_bombero')
-          .order('nomb_bombero');
+  Future<PaginaLista<BomberoListItem>> _listarBomberosPagina({
+    required int offset,
+    required int limit,
+    required bool conEmbedComuna,
+  }) async {
+    final pedido = limit + 1;
+    final select = conEmbedComuna
+        ? 'rut_num, rut_dv, nomb_bombero, ape_p_bombero, is_admin, user_id, '
+            'companias_bomberos(nombre, id_compania, cut_com, comunas(comuna))'
+        : 'rut_num, rut_dv, nomb_bombero, ape_p_bombero, is_admin, user_id, '
+            'companias_bomberos(nombre, id_compania, cut_com)';
 
-      final comunas = await _mapComunas(
-        raw
-            .map((r) => _nestedMap(r['companias_bomberos'])?['cut_com'])
-            .whereType<num>()
-            .map((n) => n.toInt())
-            .toSet(),
-      );
+    final raw = await _client
+        .from('bombero')
+        .select(select)
+        .order('ape_p_bombero')
+        .order('nomb_bombero')
+        .range(offset, offset + pedido - 1);
 
-      return raw.map((row) {
-        final item = _mapItem(row);
-        if (item == null) return null;
-        final cut = _nestedInt(_nestedMap(row['companias_bomberos']), 'cut_com');
-        if (cut == null) return item;
-        return BomberoListItem(
-          rutNum: item.rutNum,
-          rutFormateado: item.rutFormateado,
-          nombBombero: item.nombBombero,
-          apePBombero: item.apePBombero,
-          nombreCompleto: item.nombreCompleto,
-          compania: item.compania,
-          idCompania: item.idCompania,
-          comuna: comunas[cut] ?? item.comuna,
-          esAdmin: item.esAdmin,
-          tieneCuenta: item.tieneCuenta,
-        );
-      }).whereType<BomberoListItem>().toList();
-    } catch (_) {
-      return [];
+    final hayMas = raw.length > limit;
+    final slice = hayMas ? raw.sublist(0, limit) : raw;
+
+    if (conEmbedComuna) {
+      final items = slice.map(_mapItem).whereType<BomberoListItem>().toList();
+      return PaginaLista(items: items, hayMas: hayMas);
     }
+
+    final comunas = await _mapComunas(
+      slice
+          .map((r) => _nestedMap(r['companias_bomberos'])?['cut_com'])
+          .whereType<num>()
+          .map((n) => n.toInt())
+          .toSet(),
+    );
+
+    final items = slice
+        .map((row) {
+          final item = _mapItem(row);
+          if (item == null) return null;
+          final cut = _nestedInt(_nestedMap(row['companias_bomberos']), 'cut_com');
+          if (cut == null) return item;
+          return BomberoListItem(
+            rutNum: item.rutNum,
+            rutFormateado: item.rutFormateado,
+            nombBombero: item.nombBombero,
+            apePBombero: item.apePBombero,
+            nombreCompleto: item.nombreCompleto,
+            compania: item.compania,
+            idCompania: item.idCompania,
+            comuna: comunas[cut] ?? item.comuna,
+            esAdmin: item.esAdmin,
+            tieneCuenta: item.tieneCuenta,
+          );
+        })
+        .whereType<BomberoListItem>()
+        .toList();
+
+    return PaginaLista(items: items, hayMas: hayMas);
   }
 
   BomberoListItem? _mapItem(dynamic row) {

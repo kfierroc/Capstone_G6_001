@@ -2,6 +2,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../models/grupo_familiar_detalle.dart';
 import '../models/residencia_admin_detalle.dart';
+import '../models/pagina_lista.dart';
 import 'grupo_familiar_service.dart';
 
 class ResidenciasAdminService {
@@ -10,23 +11,49 @@ class ResidenciasAdminService {
   final SupabaseClient _client;
 
   Future<List<ResidenciaListItem>> listarResidencias() async {
+    final pag = await listarResidenciasPaginado(offset: 0, limit: 10000);
+    return pag.items;
+  }
+
+  /// Página de residencias (máx. [limit], por defecto 20).
+  Future<PaginaLista<ResidenciaListItem>> listarResidenciasPaginado({
+    required int offset,
+    int limit = kTamanoPaginaLista,
+    int? cutCom,
+    List<int>? cutComsRegion,
+    int? idResidenciaExacto,
+  }) async {
+    if (cutComsRegion != null && cutComsRegion.isEmpty) {
+      return const PaginaLista(items: [], hayMas: false);
+    }
+
     try {
-      final raw = await _client
-          .from('residencia')
-          .select(
+      final pedido = limit + 1;
+      var query = _client.from('residencia').select(
             'id_residencia, calle, nro_direccion, cut_com, '
             'registro_v(id_registro, vigente, id_grupof, unidad)',
-          )
-          .order('calle')
-          .order('nro_direccion');
+          );
+
+      if (idResidenciaExacto != null) {
+        query = query.eq('id_residencia', idResidenciaExacto);
+      } else if (cutCom != null) {
+        query = query.eq('cut_com', cutCom);
+      } else if (cutComsRegion != null) {
+        query = query.inFilter('cut_com', cutComsRegion);
+      }
+
+      final raw = await query.order('id_residencia').range(offset, offset + pedido - 1);
+      final hayMas = raw.length > limit;
+      final slice = hayMas ? raw.sublist(0, limit) : raw;
 
       final comunas = await _mapComunas(
-        raw.map((r) => _asInt(r['cut_com'])).whereType<int>().toSet(),
+        slice.map((r) => _asInt(r['cut_com'])).whereType<int>().toSet(),
       );
 
-      return raw.map((row) => _mapListItem(row, comunas)).whereType<ResidenciaListItem>().toList();
+      final items = slice.map((row) => _mapListItem(row, comunas)).whereType<ResidenciaListItem>().toList();
+      return PaginaLista(items: items, hayMas: hayMas);
     } catch (_) {
-      return [];
+      return const PaginaLista(items: [], hayMas: false);
     }
   }
 

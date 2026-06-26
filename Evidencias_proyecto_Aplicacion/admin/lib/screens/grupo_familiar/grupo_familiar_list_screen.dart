@@ -8,6 +8,7 @@ import '../../utils/filtro_ubicacion_lista.dart';
 import '../../widgets/admin_action_bar.dart';
 import '../../widgets/admin_header.dart';
 import '../../widgets/admin_lista_filtros_ubicacion.dart';
+import '../../widgets/admin_lista_pie_paginacion.dart';
 import '../residencias/residencia_edit_screen.dart';
 import 'grupo_familiar_detail_screen.dart';
 
@@ -119,13 +120,17 @@ class _GrupoFamiliarListScreenState extends State<GrupoFamiliarListScreen> {
   final _filtrosKey = GlobalKey<AdminListaFiltrosUbicacionState>();
   final _idController = TextEditingController();
   final _busquedaController = TextEditingController();
+  final _service = GrupoFamiliarService(Supabase.instance.client);
   List<GrupoFamiliarListItem> _grupos = [];
   bool _loading = true;
+  bool _cargandoMas = false;
+  bool _hayMas = false;
+  int _offset = 0;
 
   @override
   void initState() {
     super.initState();
-    _cargar();
+    _cargarInicial();
   }
 
   @override
@@ -135,14 +140,55 @@ class _GrupoFamiliarListScreenState extends State<GrupoFamiliarListScreen> {
     super.dispose();
   }
 
-  Future<void> _cargar() async {
-    setState(() => _loading = true);
-    final lista = await GrupoFamiliarService(Supabase.instance.client).listarGrupos();
-    if (mounted) {
-      setState(() {
-        _grupos = lista;
-        _loading = false;
-      });
+  Future<void> _cargarInicial() async {
+    setState(() {
+      _loading = true;
+      _grupos = [];
+      _offset = 0;
+      _hayMas = false;
+    });
+    await _cargarPagina(reemplazar: true);
+    if (mounted) setState(() => _loading = false);
+  }
+
+  Future<void> _cargarMas() async {
+    if (_cargandoMas || !_hayMas || _loading) return;
+    setState(() => _cargandoMas = true);
+    await _cargarPagina(reemplazar: false);
+    if (mounted) setState(() => _cargandoMas = false);
+  }
+
+  Future<void> _cargarPagina({required bool reemplazar}) async {
+    final p = parametrosFiltroUbicacion(
+      filtros: _filtrosKey.currentState,
+      idText: _idController.text,
+    );
+    final pag = await _service.listarGruposPaginado(
+      offset: _offset,
+      cutCom: p.cutCom,
+      cutComsRegion: p.cutComsRegion,
+      idGrupofExacto: p.idExacto,
+    );
+    if (!mounted) return;
+    setState(() {
+      if (reemplazar) {
+        _grupos = pag.items;
+      } else {
+        _grupos = [..._grupos, ...pag.items];
+      }
+      _offset = _grupos.length;
+      _hayMas = pag.hayMas;
+    });
+  }
+
+  void _onFiltrosCambiados() => _cargarInicial();
+
+  void _onIdCambiado() {
+    final idText = _idController.text.trim();
+    if (idText.isEmpty || int.tryParse(idText) != null) {
+      _cargarInicial();
+    } else {
+      setState(() {});
     }
   }
 
@@ -152,20 +198,15 @@ class _GrupoFamiliarListScreenState extends State<GrupoFamiliarListScreen> {
 
   List<GrupoFamiliarListItem> get _filtrados {
     final q = _busquedaController.text.trim();
-    final f = _filtrosKey.currentState;
-    final comunaMap = f?.comunaARegion ?? const {};
-    return _grupos.where((g) {
-      if (!filtroUbicacion(
-        cutComItem: g.cutCom,
-        cutRegFiltro: f?.cutRegFiltro,
-        cutComFiltro: f?.cutComFiltro,
-        comunaARegion: comunaMap,
-      )) {
-        return false;
-      }
-      if (!filtroId(id: g.idGrupof, idQuery: _idController.text)) return false;
-      return g.coincideConBusqueda(q);
-    }).toList();
+    final idText = _idController.text.trim();
+    var lista = _grupos;
+    if (idText.isNotEmpty && int.tryParse(idText) == null) {
+      lista = lista.where((g) => filtroId(id: g.idGrupof, idQuery: idText)).toList();
+    }
+    if (q.isNotEmpty) {
+      lista = lista.where((g) => g.coincideConBusqueda(q)).toList();
+    }
+    return lista;
   }
 
   @override
@@ -192,7 +233,9 @@ class _GrupoFamiliarListScreenState extends State<GrupoFamiliarListScreen> {
               busquedaController: _busquedaController,
               idHint: 'ID del grupo',
               busquedaHint: 'Buscar por RUT, teléfono o dirección...',
-              onChanged: () => setState(() {}),
+              onChanged: _onFiltrosCambiados,
+              onIdChanged: _onIdCambiado,
+              onBusquedaChanged: () => setState(() {}),
               trailing: AdminPrimaryButton(
                 label: 'Agregar Grupo Familiar',
                 icon: Icons.add,
@@ -215,23 +258,40 @@ class _GrupoFamiliarListScreenState extends State<GrupoFamiliarListScreen> {
                   : filtrados.isEmpty
                       ? Center(
                           child: Text(
-                            _grupos.isEmpty ? 'No hay grupos familiares registrados.' : 'Sin resultados para la búsqueda.',
+                            _grupos.isEmpty && !_hayMas
+                                ? 'No hay grupos familiares registrados.'
+                                : 'Sin resultados para los filtros aplicados.',
                             style: const TextStyle(color: AdminTheme.mutedText),
                           ),
                         )
-                      : RefreshIndicator(
-                          onRefresh: _cargar,
-                          child: esAncho
-                              ? _TablaDesktop(
-                                  grupos: filtrados,
-                                  onVerDetalle: widget.onVerDetalle,
-                                  onEliminar: () => _proximamente('Eliminar'),
-                                )
-                              : _ListaMobile(
-                                  grupos: filtrados,
-                                  onVerDetalle: widget.onVerDetalle,
-                                  onEliminar: () => _proximamente('Eliminar'),
-                                ),
+                      : Column(
+                          children: [
+                            Expanded(
+                              child: RefreshIndicator(
+                                onRefresh: _cargarInicial,
+                                child: esAncho
+                                    ? _TablaDesktop(
+                                        grupos: filtrados,
+                                        onVerDetalle: widget.onVerDetalle,
+                                        onEliminar: () => _proximamente('Eliminar'),
+                                      )
+                                    : _ListaMobile(
+                                        grupos: filtrados,
+                                        onVerDetalle: widget.onVerDetalle,
+                                        onEliminar: () => _proximamente('Eliminar'),
+                                      ),
+                              ),
+                            ),
+                            if (_hayMas || _cargandoMas)
+                              AdminListaPiePaginacion(
+                                totalMostrado: _grupos.length,
+                                etiquetaSingular: 'grupo',
+                                etiquetaPlural: 'grupos',
+                                hayMas: _hayMas,
+                                cargandoMas: _cargandoMas,
+                                onCargarMas: _cargarMas,
+                              ),
+                          ],
                         ),
             ),
           ),
@@ -262,6 +322,7 @@ class _TablaDesktop extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ListView(
+      physics: const AlwaysScrollableScrollPhysics(),
       children: [
         const Padding(
           padding: EdgeInsets.fromLTRB(20, 16, 20, 12),
@@ -376,6 +437,7 @@ class _ListaMobile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ListView.separated(
+      physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.all(16),
       itemCount: grupos.length,
       separatorBuilder: (_, _) => const SizedBox(height: 12),

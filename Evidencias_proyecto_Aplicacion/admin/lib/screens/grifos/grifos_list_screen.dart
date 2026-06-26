@@ -9,6 +9,7 @@ import '../../utils/filtro_ubicacion_lista.dart';
 import '../../widgets/admin_action_bar.dart';
 import '../../widgets/admin_header.dart';
 import '../../widgets/admin_lista_filtros_ubicacion.dart';
+import '../../widgets/admin_lista_pie_paginacion.dart';
 import 'grifo_edit_screen.dart';
 
 class GrifosListScreen extends StatefulWidget {
@@ -30,13 +31,18 @@ class GrifosListScreen extends StatefulWidget {
 class _GrifosListScreenState extends State<GrifosListScreen> {
   final _filtrosKey = GlobalKey<AdminListaFiltrosUbicacionState>();
   final _idController = TextEditingController();
+  final _service = GrifosAdminService(Supabase.instance.client);
+
   List<GrifoListItem> _grifos = [];
   bool _loading = true;
+  bool _cargandoMas = false;
+  bool _hayMas = false;
+  int _offset = 0;
 
   @override
   void initState() {
     super.initState();
-    _cargar();
+    _cargarInicial();
   }
 
   @override
@@ -45,31 +51,69 @@ class _GrifosListScreenState extends State<GrifosListScreen> {
     super.dispose();
   }
 
-  Future<void> _cargar() async {
-    setState(() => _loading = true);
-    final lista = await GrifosAdminService(Supabase.instance.client).listarGrifos();
-    if (mounted) {
-      setState(() {
-        _grifos = lista;
-        _loading = false;
-      });
+  ({int? cutCom, List<int>? cutComsRegion, int? idGrifoExacto}) _parametrosFiltro() {
+    final p = parametrosFiltroUbicacion(
+      filtros: _filtrosKey.currentState,
+      idText: _idController.text,
+    );
+    return (cutCom: p.cutCom, cutComsRegion: p.cutComsRegion, idGrifoExacto: p.idExacto);
+  }
+
+  Future<void> _cargarInicial() async {
+    setState(() {
+      _loading = true;
+      _grifos = [];
+      _offset = 0;
+      _hayMas = false;
+    });
+    await _cargarPagina(reemplazar: true);
+    if (mounted) setState(() => _loading = false);
+  }
+
+  Future<void> _cargarMas() async {
+    if (_cargandoMas || !_hayMas || _loading) return;
+    setState(() => _cargandoMas = true);
+    await _cargarPagina(reemplazar: false);
+    if (mounted) setState(() => _cargandoMas = false);
+  }
+
+  Future<void> _cargarPagina({required bool reemplazar}) async {
+    final p = _parametrosFiltro();
+    final pag = await _service.listarGrifosPaginado(
+      offset: _offset,
+      cutCom: p.cutCom,
+      cutComsRegion: p.cutComsRegion,
+      idGrifoExacto: p.idGrifoExacto,
+    );
+    if (!mounted) return;
+    setState(() {
+      if (reemplazar) {
+        _grifos = pag.items;
+      } else {
+        _grifos = [..._grifos, ...pag.items];
+      }
+      _offset = _grifos.length;
+      _hayMas = pag.hayMas;
+    });
+  }
+
+  void _onFiltrosCambiados() => _cargarInicial();
+
+  void _onIdCambiado() {
+    final idText = _idController.text.trim();
+    if (idText.isEmpty || int.tryParse(idText) != null) {
+      _cargarInicial();
+    } else {
+      setState(() {});
     }
   }
 
   List<GrifoListItem> get _filtrados {
-    final f = _filtrosKey.currentState;
-    final comunaMap = f?.comunaARegion ?? const {};
-    return _grifos.where((g) {
-      if (!filtroUbicacion(
-        cutComItem: g.cutCom,
-        cutRegFiltro: f?.cutRegFiltro,
-        cutComFiltro: f?.cutComFiltro,
-        comunaARegion: comunaMap,
-      )) {
-        return false;
-      }
-      return filtroId(id: g.idGrifo, idQuery: _idController.text);
-    }).toList();
+    final idText = _idController.text.trim();
+    if (idText.isEmpty || int.tryParse(idText) != null) {
+      return _grifos;
+    }
+    return _grifos.where((g) => filtroId(id: g.idGrifo, idQuery: idText)).toList();
   }
 
   @override
@@ -94,7 +138,8 @@ class _GrifosListScreenState extends State<GrifosListScreen> {
               key: _filtrosKey,
               idController: _idController,
               idHint: 'ID del grifo',
-              onChanged: () => setState(() {}),
+              onChanged: _onFiltrosCambiados,
+              onIdChanged: _onIdCambiado,
               trailing: AdminPrimaryButton(
                 label: 'Agregar Grifo',
                 icon: Icons.add,
@@ -117,15 +162,32 @@ class _GrifosListScreenState extends State<GrifosListScreen> {
                   : filtrados.isEmpty
                       ? Center(
                           child: Text(
-                            _grifos.isEmpty ? 'No hay grifos registrados.' : 'Sin resultados para la búsqueda.',
+                            _grifos.isEmpty && !_hayMas
+                                ? 'No hay grifos registrados.'
+                                : 'Sin resultados para los filtros aplicados.',
                             style: const TextStyle(color: AdminTheme.mutedText),
                           ),
                         )
-                      : RefreshIndicator(
-                          onRefresh: _cargar,
-                          child: esAncho
-                              ? _TablaDesktop(grifos: filtrados, onVerDetalle: widget.onVerDetalle)
-                              : _ListaMobile(grifos: filtrados, onVerDetalle: widget.onVerDetalle),
+                      : Column(
+                          children: [
+                            Expanded(
+                              child: RefreshIndicator(
+                                onRefresh: _cargarInicial,
+                                child: esAncho
+                                    ? _TablaDesktop(grifos: filtrados, onVerDetalle: widget.onVerDetalle)
+                                    : _ListaMobile(grifos: filtrados, onVerDetalle: widget.onVerDetalle),
+                              ),
+                            ),
+                            if (_hayMas || _cargandoMas)
+                              AdminListaPiePaginacion(
+                                totalMostrado: _grifos.length,
+                                etiquetaSingular: 'grifo',
+                                etiquetaPlural: 'grifos',
+                                hayMas: _hayMas,
+                                cargandoMas: _cargandoMas,
+                                onCargarMas: _cargarMas,
+                              ),
+                          ],
                         ),
             ),
           ),
@@ -151,6 +213,7 @@ class _TablaDesktop extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ListView(
+      physics: const AlwaysScrollableScrollPhysics(),
       children: [
         const Padding(
           padding: EdgeInsets.fromLTRB(20, 16, 20, 12),
@@ -212,6 +275,7 @@ class _ListaMobile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ListView.separated(
+      physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.all(16),
       itemCount: grifos.length,
       separatorBuilder: (_, _) => const SizedBox(height: 12),

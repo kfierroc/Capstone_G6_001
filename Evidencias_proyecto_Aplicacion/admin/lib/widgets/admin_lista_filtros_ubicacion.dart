@@ -12,6 +12,8 @@ class AdminListaFiltrosUbicacion extends StatefulWidget {
     super.key,
     required this.idController,
     required this.onChanged,
+    this.onIdChanged,
+    this.onBusquedaChanged,
     this.busquedaController,
     this.idHint = 'Buscar por ID...',
     this.busquedaHint,
@@ -23,6 +25,8 @@ class AdminListaFiltrosUbicacion extends StatefulWidget {
   final String idHint;
   final String? busquedaHint;
   final VoidCallback onChanged;
+  final VoidCallback? onIdChanged;
+  final VoidCallback? onBusquedaChanged;
   final Widget? trailing;
 
   @override
@@ -75,7 +79,7 @@ class AdminListaFiltrosUbicacionState extends State<AdminListaFiltrosUbicacion> 
                       child: AdminSearchBar(
                         controller: widget.busquedaController!,
                         hint: widget.busquedaHint ?? 'Buscar...',
-                        onChanged: (_) => _notificar(),
+                        onChanged: (_) => (widget.onBusquedaChanged ?? widget.onChanged)(),
                       ),
                     ),
                   ],
@@ -98,7 +102,7 @@ class AdminListaFiltrosUbicacionState extends State<AdminListaFiltrosUbicacion> 
                     AdminSearchBar(
                       controller: widget.busquedaController!,
                       hint: widget.busquedaHint ?? 'Buscar...',
-                      onChanged: (_) => _notificar(),
+                      onChanged: (_) => (widget.onBusquedaChanged ?? widget.onChanged)(),
                     ),
                   ],
                   if (widget.trailing != null) ...[
@@ -148,7 +152,7 @@ class AdminListaFiltrosUbicacionState extends State<AdminListaFiltrosUbicacion> 
   Widget _campoId() {
     return TextField(
       controller: widget.idController,
-      onChanged: (_) => _notificar(),
+      onChanged: (_) => (widget.onIdChanged ?? widget.onChanged)(),
       keyboardType: TextInputType.number,
       decoration: InputDecoration(
         labelText: 'ID',

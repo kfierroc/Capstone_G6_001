@@ -7,6 +7,7 @@ import '../../theme/admin_theme.dart';
 import '../../widgets/admin_action_bar.dart';
 import '../../widgets/admin_edit_sheets.dart';
 import '../../widgets/admin_header.dart';
+import '../../widgets/admin_lista_pie_paginacion.dart';
 
 class BomberosListScreen extends StatefulWidget {
   const BomberosListScreen({super.key, required this.alertCount});
@@ -19,13 +20,17 @@ class BomberosListScreen extends StatefulWidget {
 
 class _BomberosListScreenState extends State<BomberosListScreen> {
   final _busquedaController = TextEditingController();
+  final _service = BomberosAdminService(Supabase.instance.client);
   List<BomberoListItem> _bomberos = [];
   bool _loading = true;
+  bool _cargandoMas = false;
+  bool _hayMas = false;
+  int _offset = 0;
 
   @override
   void initState() {
     super.initState();
-    _cargar();
+    _cargarInicial();
   }
 
   @override
@@ -34,15 +39,36 @@ class _BomberosListScreenState extends State<BomberosListScreen> {
     super.dispose();
   }
 
-  Future<void> _cargar() async {
-    setState(() => _loading = true);
-    final lista = await BomberosAdminService(Supabase.instance.client).listarBomberos();
-    if (mounted) {
-      setState(() {
-        _bomberos = lista;
-        _loading = false;
-      });
-    }
+  Future<void> _cargarInicial() async {
+    setState(() {
+      _loading = true;
+      _bomberos = [];
+      _offset = 0;
+      _hayMas = false;
+    });
+    await _cargarPagina(reemplazar: true);
+    if (mounted) setState(() => _loading = false);
+  }
+
+  Future<void> _cargarMas() async {
+    if (_cargandoMas || !_hayMas || _loading) return;
+    setState(() => _cargandoMas = true);
+    await _cargarPagina(reemplazar: false);
+    if (mounted) setState(() => _cargandoMas = false);
+  }
+
+  Future<void> _cargarPagina({required bool reemplazar}) async {
+    final pag = await _service.listarBomberosPaginado(offset: _offset);
+    if (!mounted) return;
+    setState(() {
+      if (reemplazar) {
+        _bomberos = pag.items;
+      } else {
+        _bomberos = [..._bomberos, ...pag.items];
+      }
+      _offset = _bomberos.length;
+      _hayMas = pag.hayMas;
+    });
   }
 
   void _proximamente(String accion) {
@@ -51,7 +77,7 @@ class _BomberosListScreenState extends State<BomberosListScreen> {
 
   Future<void> _editarBombero(BomberoListItem b) async {
     final ok = await AdminEditSheets.editarBombero(context, bombero: b);
-    if (ok == true) _cargar();
+    if (ok == true) _cargarInicial();
   }
 
   List<BomberoListItem> get _filtrados {
@@ -127,27 +153,42 @@ class _BomberosListScreenState extends State<BomberosListScreen> {
                   : filtrados.isEmpty
                       ? Center(
                           child: Text(
-                            _bomberos.isEmpty
+                            _bomberos.isEmpty && !_hayMas
                                 ? 'No hay bomberos registrados.'
                                 : 'Sin resultados para la búsqueda.',
                             style: const TextStyle(color: AdminTheme.mutedText),
                           ),
                         )
-                      : RefreshIndicator(
-                          onRefresh: _cargar,
-                          child: esAncho
-                              ? _TablaDesktop(
-                                  bomberos: filtrados,
-                                  onVerDetalle: () => _proximamente('Ver detalle'),
-                                  onEditar: _editarBombero,
-                                  onEliminar: () => _proximamente('Eliminar'),
-                                )
-                              : _ListaMobile(
-                                  bomberos: filtrados,
-                                  onVerDetalle: () => _proximamente('Ver detalle'),
-                                  onEditar: _editarBombero,
-                                  onEliminar: () => _proximamente('Eliminar'),
-                                ),
+                      : Column(
+                          children: [
+                            Expanded(
+                              child: RefreshIndicator(
+                                onRefresh: _cargarInicial,
+                                child: esAncho
+                                    ? _TablaDesktop(
+                                        bomberos: filtrados,
+                                        onVerDetalle: () => _proximamente('Ver detalle'),
+                                        onEditar: _editarBombero,
+                                        onEliminar: () => _proximamente('Eliminar'),
+                                      )
+                                    : _ListaMobile(
+                                        bomberos: filtrados,
+                                        onVerDetalle: () => _proximamente('Ver detalle'),
+                                        onEditar: _editarBombero,
+                                        onEliminar: () => _proximamente('Eliminar'),
+                                      ),
+                              ),
+                            ),
+                            if (_hayMas || _cargandoMas)
+                              AdminListaPiePaginacion(
+                                totalMostrado: _bomberos.length,
+                                etiquetaSingular: 'bombero',
+                                etiquetaPlural: 'bomberos',
+                                hayMas: _hayMas,
+                                cargandoMas: _cargandoMas,
+                                onCargarMas: _cargarMas,
+                              ),
+                          ],
                         ),
             ),
           ),
@@ -180,6 +221,7 @@ class _TablaDesktop extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ListView(
+      physics: const AlwaysScrollableScrollPhysics(),
       children: [
         const Padding(
           padding: EdgeInsets.fromLTRB(20, 16, 20, 12),
@@ -335,6 +377,7 @@ class _ListaMobile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ListView.separated(
+      physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.all(16),
       itemCount: bomberos.length,
       separatorBuilder: (_, _) => const SizedBox(height: 12),

@@ -1,12 +1,10 @@
 import 'package:flutter/material.dart';
 
+import '../../models/grifo_filtro_estado.dart';
 import '../../models/grifo_mapa.dart';
 import '../../utils/grifo_estado_utils.dart';
 
-enum GrifoFiltroEstado { todos, operativos, danados, mantenimiento, desconocidos }
-
-/// Cantidad de grifos visibles por página en las listas de búsqueda.
-const int kGrifosListaPagina = 20;
+export '../../models/grifo_filtro_estado.dart' show GrifoFiltroEstado, kGrifosListaPagina;
 
 /// Filtra y resume resultados de grifos (mapa y lista).
 class GrifoListaUtils {
@@ -40,18 +38,16 @@ class GrifoListaUtils {
     }
   }
 
-  static Map<String, int> estadisticas(List<GrifoMapaResultado> base) {
-    int contar(bool Function(String) pred) =>
-        base.where((g) => pred(g.estado.toLowerCase())).length;
+  static Map<String, int> estadisticasVacias() => grifoEstadisticasVacias();
 
-    return {
-      'total': base.length,
-      'operativos': contar((e) => e.contains('operativo')),
-      'danados': contar((e) => e.contains('dañado') || e.contains('danado')),
-      'mantenimiento': contar((e) => e.contains('mantenimiento')),
-      'sin_verificar': contar((e) => e.contains('desconocido') || e.contains('sin verificar') || e.isEmpty),
-    };
-  }
+  static bool coincideFiltro(String estado, GrifoFiltroEstado filtro) =>
+      grifoCoincideFiltro(estado, filtro);
+
+  static int totalParaFiltro(Map<String, int> estadisticas, GrifoFiltroEstado filtro) =>
+      totalGrifosParaFiltro(estadisticas, filtro);
+
+  static Map<String, int> estadisticas(List<GrifoMapaResultado> base) =>
+      grifoEstadisticasDesdeEstados(base.map((g) => g.estado).toList());
 }
 
 /// Tarjetas de resumen (total, operativos, etc.).
@@ -291,165 +287,159 @@ class GrifoTarjetaLista extends StatelessWidget {
   }
 }
 
-/// Lista paginada de tarjetas de grifo (20 por página, botón «mostrar más»).
-class GrifosListaPaginada extends StatefulWidget {
+/// Lista de tarjetas con botón «cargar más» (paginación desde servidor).
+class GrifosListaPaginada extends StatelessWidget {
   const GrifosListaPaginada({
     super.key,
     required this.grifos,
+    required this.total,
     this.idGrifoDestacado,
     this.onVerEnMapa,
     this.onEditar,
+    this.hayMas = false,
+    this.cargandoMas = false,
+    this.onCargarMas,
   });
 
   final List<GrifoMapaResultado> grifos;
+  final int total;
   final int? idGrifoDestacado;
   final ValueChanged<GrifoMapaResultado>? onVerEnMapa;
   final Future<void> Function(GrifoMapaResultado)? onEditar;
+  final bool hayMas;
+  final bool cargandoMas;
+  final VoidCallback? onCargarMas;
 
-  @override
-  State<GrifosListaPaginada> createState() => _GrifosListaPaginadaState();
-}
-
-class _GrifosListaPaginadaState extends State<GrifosListaPaginada> {
   static const _azul = Color(0xFF1565C0);
-  int _visible = kGrifosListaPagina;
-
-  @override
-  void didUpdateWidget(GrifosListaPaginada oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.grifos != widget.grifos) {
-      _visible = kGrifosListaPagina;
-    }
-  }
-
-  void _cargarMas() {
-    setState(() => _visible += kGrifosListaPagina);
-  }
 
   @override
   Widget build(BuildContext context) {
-    final total = widget.grifos.length;
-    if (total == 0) return const SizedBox.shrink();
+    if (grifos.isEmpty) return const SizedBox.shrink();
 
-    final fin = _visible < total ? _visible : total;
-    final visibles = widget.grifos.sublist(0, fin);
-    final hayMas = fin < total;
-    final siguiente = (total - fin).clamp(1, kGrifosListaPagina);
+    final mostrando = grifos.length;
+    final siguiente = (total - mostrando).clamp(1, kGrifosListaPagina);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        ...visibles.map(
+        ...grifos.map(
           (g) => GrifoTarjetaLista(
             grifo: g,
-            destacado: g.idGrifo == widget.idGrifoDestacado,
-            onVerEnMapa: widget.onVerEnMapa != null ? () => widget.onVerEnMapa!(g) : null,
-            onEditar: widget.onEditar != null ? () { widget.onEditar!(g); } : null,
+            destacado: g.idGrifo == idGrifoDestacado,
+            onVerEnMapa: onVerEnMapa != null ? () => onVerEnMapa!(g) : null,
+            onEditar: onEditar != null ? () { onEditar!(g); } : null,
           ),
         ),
         if (hayMas) ...[
           const SizedBox(height: 4),
           Center(
             child: OutlinedButton(
-              onPressed: _cargarMas,
+              onPressed: cargandoMas ? null : onCargarMas,
               style: OutlinedButton.styleFrom(
                 foregroundColor: _azul,
                 side: const BorderSide(color: _azul),
                 padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
               ),
-              child: Text(
-                'Mostrar $siguiente más',
-                style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
-              ),
+              child: cargandoMas
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2, color: _azul),
+                    )
+                  : Text(
+                      'Mostrar $siguiente más',
+                      style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+                    ),
             ),
           ),
-          const SizedBox(height: 4),
-          Text(
-            'Mostrando $fin de $total',
-            textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
-          ),
         ],
+        const SizedBox(height: 4),
+        Text(
+          hayMas ? 'Mostrando $mostrando de $total' : 'Mostrando $mostrando grifo${mostrando == 1 ? '' : 's'}',
+          textAlign: TextAlign.center,
+          style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+        ),
       ],
     );
   }
 }
 
 /// Estadísticas, filtros y lista de grifos (reutilizable en mapa y lista).
-class GrifosPanelResultados extends StatefulWidget {
+class GrifosPanelResultados extends StatelessWidget {
   const GrifosPanelResultados({
     super.key,
     required this.resultados,
     required this.filtro,
     required this.onFiltroChanged,
+    this.estadisticas,
     this.mensajeVacio = 'Busca en el mapa o por ID para ver grifos en la lista.',
     this.mostrarTitulo = true,
     this.idGrifoDestacado,
     this.onVerEnMapa,
     this.onEditar,
+    this.hayMas = false,
+    this.cargandoMas = false,
+    this.onCargarMas,
   });
 
   final List<GrifoMapaResultado> resultados;
   final GrifoFiltroEstado filtro;
   final ValueChanged<GrifoFiltroEstado> onFiltroChanged;
+  final Map<String, int>? estadisticas;
   final String mensajeVacio;
   final bool mostrarTitulo;
   final int? idGrifoDestacado;
   final ValueChanged<GrifoMapaResultado>? onVerEnMapa;
   final Future<void> Function(GrifoMapaResultado)? onEditar;
-
-  @override
-  State<GrifosPanelResultados> createState() => _GrifosPanelResultadosState();
-}
-
-class _GrifosPanelResultadosState extends State<GrifosPanelResultados> {
-  int _listaEpoch = 0;
-
-  @override
-  void didUpdateWidget(GrifosPanelResultados oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.resultados != widget.resultados || oldWidget.filtro != widget.filtro) {
-      _listaEpoch++;
-    }
-  }
+  final bool hayMas;
+  final bool cargandoMas;
+  final VoidCallback? onCargarMas;
 
   @override
   Widget build(BuildContext context) {
-    final filtrados = GrifoListaUtils.filtrar(widget.resultados, widget.filtro);
-    final stats = GrifoListaUtils.estadisticas(widget.resultados);
+    final stats = estadisticas ?? GrifoListaUtils.estadisticas(resultados);
+    final visibles = estadisticas != null
+        ? resultados
+        : GrifoListaUtils.filtrar(resultados, filtro);
+    final totalFiltro = estadisticas != null
+        ? GrifoListaUtils.totalParaFiltro(stats, filtro)
+        : visibles.length;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         GrifosEstadisticasTarjetas(estadisticas: stats),
         const SizedBox(height: 16),
-        if (widget.mostrarTitulo)
+        if (mostrarTitulo)
           Text(
-            'Lista de Grifos (${filtrados.length})',
+            'Lista de Grifos ($totalFiltro)',
             style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
           ),
-        if (widget.mostrarTitulo) const SizedBox(height: 10),
-        GrifosFiltroEstadoChips(filtro: widget.filtro, onFiltroChanged: widget.onFiltroChanged),
+        if (mostrarTitulo) const SizedBox(height: 10),
+        GrifosFiltroEstadoChips(filtro: filtro, onFiltroChanged: onFiltroChanged),
         const SizedBox(height: 8),
-        if (filtrados.isEmpty)
+        if (visibles.isEmpty)
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 24),
             child: Text(
-              widget.resultados.isEmpty
-                  ? widget.mensajeVacio
-                  : 'Ningún grifo coincide con el filtro de estado.',
+              totalFiltro == 0 && filtro != GrifoFiltroEstado.todos
+                  ? 'Ningún grifo coincide con el filtro de estado.'
+                  : mensajeVacio,
               textAlign: TextAlign.center,
               style: TextStyle(color: Colors.grey.shade600, fontSize: 14),
             ),
           )
         else
           GrifosListaPaginada(
-            key: ValueKey(_listaEpoch),
-            grifos: filtrados,
-            idGrifoDestacado: widget.idGrifoDestacado,
-            onVerEnMapa: widget.onVerEnMapa,
-            onEditar: widget.onEditar,
+            grifos: visibles,
+            total: totalFiltro,
+            idGrifoDestacado: idGrifoDestacado,
+            onVerEnMapa: onVerEnMapa,
+            onEditar: onEditar,
+            hayMas: hayMas,
+            cargandoMas: cargandoMas,
+            onCargarMas: onCargarMas,
           ),
       ],
     );

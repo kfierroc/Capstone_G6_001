@@ -359,7 +359,11 @@ class _RegistroPaso4State extends State<RegistroPaso4> {
                 onChanged: (val) => setState(() => _selectedEstado = val),
               ),
         const InputLabel(label: "Instrucciones especiales"),
-        CampoNotasDomicilio(controller: _notasController),
+        CampoNotasDomicilio(
+          controller: _notasController,
+          minLines: 1,
+          maxLines: 5,
+        ),
         const SizedBox(height: 24),
         Container(
           width: double.infinity,
