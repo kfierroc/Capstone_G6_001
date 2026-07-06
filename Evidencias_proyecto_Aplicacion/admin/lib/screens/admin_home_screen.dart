@@ -81,7 +81,7 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
           detalleInicialId: _grupoFamiliarDetallePendiente,
           onDetalleInicialConsumido: () => setState(() => _grupoFamiliarDetallePendiente = null),
         ),
-      AdminSection.bomberos => BomberosListScreen(alertCount: _alertCount),
+      AdminSection.bomberos => BomberoSection(alertCount: _alertCount),
       AdminSection.grifos => GrifoSection(alertCount: _alertCount, perfil: widget.perfil),
       AdminSection.catalogos => CatalogosScreen(alertCount: _alertCount),
     };

@@ -226,6 +226,13 @@ class AdminEditSheets {
       builder: (ctx) => _BomberoDialog(bombero: bombero),
     );
   }
+
+  static Future<bool?> agregarBombero(BuildContext context) {
+    return showDialog<bool>(
+      context: context,
+      builder: (ctx) => const _BomberoDialog(),
+    );
+  }
 }
 
 class _FormDialog extends StatefulWidget {
@@ -972,15 +979,17 @@ class _PisoDialogState extends State<_PisoDialog> {
 }
 
 class _BomberoDialog extends StatefulWidget {
-  const _BomberoDialog({required this.bombero});
+  const _BomberoDialog({this.bombero});
 
-  final BomberoListItem bombero;
+  final BomberoListItem? bombero;
 
   @override
   State<_BomberoDialog> createState() => _BomberoDialogState();
 }
 
 class _BomberoDialogState extends State<_BomberoDialog> {
+  late final TextEditingController _rutCtrl;
+  late final TextEditingController _dvCtrl;
   late final TextEditingController _nombCtrl;
   late final TextEditingController _apeCtrl;
   bool _isAdmin = false;
@@ -989,13 +998,18 @@ class _BomberoDialogState extends State<_BomberoDialog> {
   bool _loading = true;
   bool _guardando = false;
 
+  bool get _editando => widget.bombero != null;
+
   @override
   void initState() {
     super.initState();
-    _nombCtrl = TextEditingController(text: widget.bombero.nombBombero);
-    _apeCtrl = TextEditingController(text: widget.bombero.apePBombero);
-    _isAdmin = widget.bombero.esAdmin;
-    _idCompania = widget.bombero.idCompania;
+    final b = widget.bombero;
+    _rutCtrl = TextEditingController(text: b?.rutNum.toString() ?? '');
+    _dvCtrl = TextEditingController(text: b != null ? b.rutFormateado.split('-').last : '');
+    _nombCtrl = TextEditingController(text: b?.nombBombero ?? '');
+    _apeCtrl = TextEditingController(text: b?.apePBombero ?? '');
+    _isAdmin = b?.esAdmin ?? false;
+    _idCompania = b?.idCompania;
     _cargar();
   }
 
@@ -1012,16 +1026,29 @@ class _BomberoDialogState extends State<_BomberoDialog> {
 
   Future<void> _guardar() async {
     if (_idCompania == null) throw AdminEditException('Selecciona una compañía.');
+    final rutNum = int.tryParse(_rutCtrl.text.trim().replaceAll('.', ''));
+    if (rutNum == null) throw AdminEditException('RUT numérico inválido.');
 
     setState(() => _guardando = true);
     try {
-      await AdminEditSheets._edit().actualizarBombero(
-        rutNum: widget.bombero.rutNum,
-        nombBombero: _nombCtrl.text,
-        apePBombero: _apeCtrl.text,
-        isAdmin: _isAdmin,
-        idCompania: _idCompania!,
-      );
+      if (_editando) {
+        await AdminEditSheets._edit().actualizarBombero(
+          rutNum: widget.bombero!.rutNum,
+          nombBombero: _nombCtrl.text,
+          apePBombero: _apeCtrl.text,
+          isAdmin: _isAdmin,
+          idCompania: _idCompania!,
+        );
+      } else {
+        await AdminEditSheets._edit().crearBombero(
+          rutNum: rutNum,
+          rutDv: _dvCtrl.text,
+          nombBombero: _nombCtrl.text,
+          apePBombero: _apeCtrl.text,
+          isAdmin: _isAdmin,
+          idCompania: _idCompania!,
+        );
+      }
       if (mounted) Navigator.pop(context, true);
     } catch (e) {
       if (mounted) AdminEditSheets.showError(context, e);
@@ -1032,6 +1059,8 @@ class _BomberoDialogState extends State<_BomberoDialog> {
 
   @override
   void dispose() {
+    _rutCtrl.dispose();
+    _dvCtrl.dispose();
     _nombCtrl.dispose();
     _apeCtrl.dispose();
     super.dispose();
@@ -1040,7 +1069,7 @@ class _BomberoDialogState extends State<_BomberoDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: Text('Editar bombero · ${widget.bombero.rutFormateado}'),
+      title: Text(_editando ? 'Editar bombero · ${widget.bombero!.rutFormateado}' : 'Agregar bombero'),
       content: SizedBox(
         width: 420,
         child: _loading
@@ -1048,6 +1077,29 @@ class _BomberoDialogState extends State<_BomberoDialog> {
             : Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
+                  if (!_editando) ...[
+                    Row(
+                      children: [
+                        Expanded(
+                          flex: 3,
+                          child: TextField(
+                            controller: _rutCtrl,
+                            decoration: const InputDecoration(labelText: 'RUT (sin DV)', border: OutlineInputBorder()),
+                            keyboardType: TextInputType.number,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: TextField(
+                            controller: _dvCtrl,
+                            decoration: const InputDecoration(labelText: 'DV', border: OutlineInputBorder()),
+                            textCapitalization: TextCapitalization.characters,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                  ],
                   TextField(
                     controller: _nombCtrl,
                     decoration: const InputDecoration(labelText: 'Nombre', border: OutlineInputBorder()),

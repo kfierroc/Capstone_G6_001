@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../models/bombero_list_item.dart';
+import '../../services/admin_edit_service.dart';
 import '../../services/bomberos_admin_service.dart';
 import '../../theme/admin_theme.dart';
 import '../../widgets/admin_action_bar.dart';
@@ -9,10 +10,17 @@ import '../../widgets/admin_edit_sheets.dart';
 import '../../widgets/admin_header.dart';
 import '../../widgets/admin_lista_pie_paginacion.dart';
 
+import 'bombero_detail_screen.dart';
+
 class BomberosListScreen extends StatefulWidget {
-  const BomberosListScreen({super.key, required this.alertCount});
+  const BomberosListScreen({
+    super.key,
+    required this.alertCount,
+    required this.onVerDetalle,
+  });
 
   final int alertCount;
+  final ValueChanged<BomberoListItem> onVerDetalle;
 
   @override
   State<BomberosListScreen> createState() => _BomberosListScreenState();
@@ -71,8 +79,30 @@ class _BomberosListScreenState extends State<BomberosListScreen> {
     });
   }
 
-  void _proximamente(String accion) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$accion — próximamente.')));
+
+  Future<void> _agregarBombero() async {
+    final ok = await AdminEditSheets.agregarBombero(context);
+    if (ok == true) _cargarInicial();
+  }
+
+  Future<void> _eliminarBombero(BomberoListItem b) async {
+    final ok = await AdminEditSheets.confirmarEliminar(
+      context,
+      titulo: 'Eliminar bombero',
+      mensaje:
+          'Se eliminará a ${b.nombreCompleto} (${b.rutFormateado}). '
+          'Esta acción no se puede deshacer.',
+    );
+    if (ok != true) return;
+    try {
+      await AdminEditService(Supabase.instance.client).eliminarBombero(b.rutNum);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Bombero eliminado.')));
+        _cargarInicial();
+      }
+    } catch (e) {
+      if (mounted) AdminEditSheets.showError(context, e);
+    }
   }
 
   Future<void> _editarBombero(BomberoListItem b) async {
@@ -117,7 +147,7 @@ class _BomberosListScreenState extends State<BomberosListScreen> {
                       AdminPrimaryButton(
                         label: 'Agregar Bombero',
                         icon: Icons.add,
-                        onPressed: () => _proximamente('Agregar bombero'),
+                        onPressed: _agregarBombero,
                       ),
                     ],
                   )
@@ -133,7 +163,7 @@ class _BomberosListScreenState extends State<BomberosListScreen> {
                       AdminPrimaryButton(
                         label: 'Agregar Bombero',
                         icon: Icons.add,
-                        onPressed: () => _proximamente('Agregar bombero'),
+                        onPressed: _agregarBombero,
                       ),
                     ],
                   ),
@@ -167,15 +197,15 @@ class _BomberosListScreenState extends State<BomberosListScreen> {
                                 child: esAncho
                                     ? _TablaDesktop(
                                         bomberos: filtrados,
-                                        onVerDetalle: () => _proximamente('Ver detalle'),
+                                        onVerDetalle: widget.onVerDetalle,
                                         onEditar: _editarBombero,
-                                        onEliminar: () => _proximamente('Eliminar'),
+                                        onEliminar: _eliminarBombero,
                                       )
                                     : _ListaMobile(
                                         bomberos: filtrados,
-                                        onVerDetalle: () => _proximamente('Ver detalle'),
+                                        onVerDetalle: widget.onVerDetalle,
                                         onEditar: _editarBombero,
-                                        onEliminar: () => _proximamente('Eliminar'),
+                                        onEliminar: _eliminarBombero,
                                       ),
                               ),
                             ),
@@ -207,9 +237,9 @@ class _TablaDesktop extends StatelessWidget {
   });
 
   final List<BomberoListItem> bomberos;
-  final VoidCallback onVerDetalle;
+  final ValueChanged<BomberoListItem> onVerDetalle;
   final ValueChanged<BomberoListItem> onEditar;
-  final VoidCallback onEliminar;
+  final ValueChanged<BomberoListItem> onEliminar;
 
   static const _headerStyle = TextStyle(
     fontSize: 11,
@@ -260,9 +290,9 @@ class _FilaDesktop extends StatelessWidget {
   });
 
   final BomberoListItem bombero;
-  final VoidCallback onVerDetalle;
+  final ValueChanged<BomberoListItem> onVerDetalle;
   final ValueChanged<BomberoListItem> onEditar;
-  final VoidCallback onEliminar;
+  final ValueChanged<BomberoListItem> onEliminar;
 
   static const _cellStyle = TextStyle(fontSize: 14, color: AdminTheme.titleText);
 
@@ -287,9 +317,9 @@ class _FilaDesktop extends StatelessWidget {
                   spacing: 8,
                   runSpacing: 8,
                   children: [
-                    AdminOutlineButton(label: 'Ver Detalle', onPressed: onVerDetalle),
+                    AdminOutlineButton(label: 'Ver Detalle', onPressed: () => onVerDetalle(bombero)),
                     AdminOutlineButton(label: 'Editar', onPressed: () => onEditar(bombero)),
-                    AdminDangerButton(label: 'Eliminar', onPressed: onEliminar),
+                    AdminDangerButton(label: 'Eliminar', onPressed: () => onEliminar(bombero)),
                   ],
                 ),
               ),
@@ -370,9 +400,9 @@ class _ListaMobile extends StatelessWidget {
   });
 
   final List<BomberoListItem> bomberos;
-  final VoidCallback onVerDetalle;
+  final ValueChanged<BomberoListItem> onVerDetalle;
   final ValueChanged<BomberoListItem> onEditar;
-  final VoidCallback onEliminar;
+  final ValueChanged<BomberoListItem> onEliminar;
 
   @override
   Widget build(BuildContext context) {
@@ -414,15 +444,59 @@ class _ListaMobile extends StatelessWidget {
                 spacing: 8,
                 runSpacing: 8,
                 children: [
-                  AdminOutlineButton(label: 'Ver Detalle', onPressed: onVerDetalle),
+                  AdminOutlineButton(label: 'Ver Detalle', onPressed: () => onVerDetalle(b)),
                   AdminOutlineButton(label: 'Editar', onPressed: () => onEditar(b)),
-                  AdminDangerButton(label: 'Eliminar', onPressed: onEliminar),
+                  AdminDangerButton(label: 'Eliminar', onPressed: () => onEliminar(b)),
                 ],
               ),
             ],
           ),
         );
       },
+    );
+  }
+}
+
+class BomberoSection extends StatefulWidget {
+  const BomberoSection({super.key, required this.alertCount});
+
+  final int alertCount;
+
+  @override
+  State<BomberoSection> createState() => _BomberoSectionState();
+}
+
+class _BomberoSectionState extends State<BomberoSection> {
+  final _service = BomberosAdminService(Supabase.instance.client);
+  BomberoListItem? _detalle;
+
+  void _volverLista() => setState(() => _detalle = null);
+
+  void _abrirDetalle(BomberoListItem b) => setState(() => _detalle = b);
+
+  Future<void> _editarDesdeDetalle(BomberoListItem b) async {
+    final ok = await AdminEditSheets.editarBombero(context, bombero: b);
+    if (ok != true || !mounted) return;
+    final actualizado = await _service.obtenerPorRut(b.rutNum);
+    if (!mounted) return;
+    setState(() => _detalle = actualizado ?? b);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_detalle != null) {
+      return BomberoDetailScreen(
+        bombero: _detalle!,
+        alertCount: widget.alertCount,
+        onVolver: _volverLista,
+        onEditar: _editarDesdeDetalle,
+        onEliminado: _volverLista,
+      );
+    }
+
+    return BomberosListScreen(
+      alertCount: widget.alertCount,
+      onVerDetalle: _abrirDetalle,
     );
   }
 }

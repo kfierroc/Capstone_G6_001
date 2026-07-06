@@ -264,6 +264,82 @@ class AdminEditService {
     }).eq('rut_num', rutNum);
   }
 
+  Future<void> crearBombero({
+    required int rutNum,
+    required String rutDv,
+    required String nombBombero,
+    required String apePBombero,
+    required bool isAdmin,
+    required int idCompania,
+  }) async {
+    final dv = rutDv.trim().toUpperCase();
+    if (dv.length != 1) throw AdminEditException('Dígito verificador inválido.');
+    await _client.from('bombero').insert({
+      'rut_num': rutNum,
+      'rut_dv': dv,
+      'nomb_bombero': _trunc(nombBombero.trim(), 50),
+      'ape_p_bombero': _trunc(apePBombero.trim(), 50),
+      'is_admin': isAdmin,
+      'id_compania': idCompania,
+    });
+  }
+
+  Future<void> eliminarBombero(int rutNum) async {
+    final registros = await _client.from('info_grifo').select('id_reg_grifo').eq('rut_num', rutNum).limit(1);
+    if (registros.isNotEmpty) {
+      throw AdminEditException('No se puede eliminar: tiene registros de grifos asociados.');
+    }
+    await _client.from('bombero').delete().eq('rut_num', rutNum);
+  }
+
+  /// Elimina una residencia sin registro de vivienda vigente.
+  Future<void> eliminarResidencia(int idResidencia) async {
+    final registros = await _client
+        .from('registro_v')
+        .select('id_registro, vigente')
+        .eq('id_residencia', idResidencia);
+
+    if (registros.any((r) => r['vigente'] == true)) {
+      throw AdminEditException(
+        'No se puede eliminar: tiene un registro de vivienda vigente. '
+        'Desvincúlelo desde el grupo familiar primero.',
+      );
+    }
+
+    for (final r in registros) {
+      final idReg = (r['id_registro'] as num).toInt();
+      await _client.from('mat_peligroso').delete().eq('id_registro', idReg);
+      await _client.from('piso_v').delete().eq('id_registro', idReg);
+    }
+    if (registros.isNotEmpty) {
+      await _client.from('registro_v').delete().eq('id_residencia', idResidencia);
+    }
+    await _client.from('residencia').delete().eq('id_residencia', idResidencia);
+  }
+
+  /// Elimina un grupo familiar y sus datos asociados (integrantes, mascotas, registros).
+  Future<void> eliminarGrupoFamiliar(int idGrupof) async {
+    final integrantes = await _client.from('integrante').select('id_integrante').eq('id_grupof', idGrupof);
+    for (final row in integrantes) {
+      final idI = (row['id_integrante'] as num).toInt();
+      await _client.from('condiciones_integ').delete().eq('id_integrante', idI);
+    }
+    await _client.from('integrante').delete().eq('id_grupof', idGrupof);
+    await _client.from('mascota').delete().eq('id_grupof', idGrupof);
+
+    final registros = await _client.from('registro_v').select('id_registro').eq('id_grupof', idGrupof);
+    for (final row in registros) {
+      final idReg = (row['id_registro'] as num).toInt();
+      await _client.from('mat_peligroso').delete().eq('id_registro', idReg);
+      await _client.from('piso_v').delete().eq('id_registro', idReg);
+    }
+    if (registros.isNotEmpty) {
+      await _client.from('registro_v').delete().eq('id_grupof', idGrupof);
+    }
+
+    await _client.from('grupofamiliar').delete().eq('id_grupof', idGrupof);
+  }
+
   // --- Grifos ---
 
   Future<int> crearGrifo({

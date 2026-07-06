@@ -1,7 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
-import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -10,6 +9,7 @@ import '../models/residencia_mapa.dart';
 import '../services/mapa_residencia_service.dart';
 import '../services/mapa_residencias_cache.dart';
 import '../utils/geo_utils.dart';
+import '../utils/mapa_centro_inicial.dart';
 import '../models/bombero_perfil.dart';
 import '../widgets/custom_widgets.dart';
 import '../widgets/mapa_seleccion_callout.dart';
@@ -41,15 +41,13 @@ class MapaResidenciasScreen extends StatefulWidget {
 class _MapaResidenciasScreenState extends State<MapaResidenciasScreen> {
   static const _rojo = Color(0xFFC62828);
   static const _fondo = Color(0xFFF4F4F2);
-  static const _latSantiago = -33.4489;
-  static const _lonSantiago = -70.6693;
   final MapaResidenciasCache _cache = MapaResidenciasCache();
   late final MapaResidenciaService _mapaSvc;
 
   GoogleMapController? _mapController;
 
   /// Centro de la cámara (y del círculo de búsqueda).
-  LatLng _centroCamara = const LatLng(_latSantiago, _lonSantiago);
+  LatLng _centroCamara = MapaCentroInicial.santiago;
   double _zoomActual = 14;
 
   int _radioMetros = MapaBusquedaOpciones.radioPorDefectoMetros;
@@ -246,21 +244,11 @@ class _MapaResidenciasScreenState extends State<MapaResidenciasScreen> {
   Future<void> _centrarEnUsuario() async {
     if (mounted) setState(() => _ubicando = true);
     try {
-      var permiso = await Geolocator.checkPermission();
-      if (permiso == LocationPermission.denied) {
-        permiso = await Geolocator.requestPermission();
-      }
-      if (permiso == LocationPermission.denied || permiso == LocationPermission.deniedForever) {
-        _fijarCentro(const LatLng(_latSantiago, _lonSantiago), 13);
-        return;
-      }
-
-      final pos = await Geolocator.getCurrentPosition(
-        locationSettings: const LocationSettings(accuracy: LocationAccuracy.medium),
+      final res = await MapaCentroInicial.resolver(
+        client: Supabase.instance.client,
+        idCompania: widget.perfil?.idCompania,
       );
-      _fijarCentro(LatLng(pos.latitude, pos.longitude), 15);
-    } catch (_) {
-      _fijarCentro(const LatLng(_latSantiago, _lonSantiago), 13);
+      _fijarCentro(res.centro, res.zoom);
     } finally {
       if (mounted) setState(() => _ubicando = false);
     }

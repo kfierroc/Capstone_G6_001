@@ -1,7 +1,9 @@
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../models/compania_bombero_info.dart';
 import '../utils/supabase_parse.dart';
+import 'geocode_service.dart';
 
 class CompaniaBomberoException implements Exception {
   CompaniaBomberoException(this.message);
@@ -70,5 +72,61 @@ class CompaniaBomberoService {
     } on PostgrestException catch (e) {
       throw CompaniaBomberoException(e.message);
     }
+  }
+
+  /// Centro geográfico de la comuna de la compañía (fallback cuando no hay GPS).
+  Future<LatLng?> obtenerCentroComunaPorIdCompania(int idCompania) async {
+    final info = await obtenerPorIdCompania(idCompania);
+    if (info == null) return null;
+    return obtenerCentroPorCutCom(info.cutCom, info.nombreComuna);
+  }
+
+  Future<LatLng?> obtenerCentroPorCutCom(int cutCom, String nombreComuna) async {
+    final desdeBd = await _coordenadasComunaEnBd(cutCom);
+    if (desdeBd != null) return desdeBd;
+
+    try {
+      final geo = await GeocodeService().buscarDireccion('$nombreComuna, Chile');
+      if (geo != null) return geo;
+    } on GeocodeException catch (_) {}
+
+    return _centroPromedioEnComuna(cutCom);
+  }
+
+  Future<LatLng?> _coordenadasComunaEnBd(int cutCom) async {
+    try {
+      final row = await _client.from('comunas').select('lat, lon').eq('cut_com', cutCom).maybeSingle();
+      if (row == null) return null;
+      final lat = SupabaseParse.asDouble(row['lat']);
+      final lon = SupabaseParse.asDouble(row['lon']);
+      if (lat == null || lon == null) return null;
+      return LatLng(lat, lon);
+    } on PostgrestException catch (_) {
+      return null;
+    }
+  }
+
+  Future<LatLng?> _centroPromedioEnComuna(int cutCom) async {
+    for (final tabla in ['grifo', 'residencia']) {
+      try {
+        final raw = await _client.from(tabla).select('lat, lon').eq('cut_com', cutCom).limit(300);
+        final rows = List<Map<String, dynamic>>.from(raw as List);
+        if (rows.isEmpty) continue;
+
+        var sumLat = 0.0;
+        var sumLon = 0.0;
+        var n = 0;
+        for (final row in rows) {
+          final lat = SupabaseParse.asDouble(row['lat']);
+          final lon = SupabaseParse.asDouble(row['lon']);
+          if (lat == null || lon == null) continue;
+          sumLat += lat;
+          sumLon += lon;
+          n++;
+        }
+        if (n > 0) return LatLng(sumLat / n, sumLon / n);
+      } on PostgrestException catch (_) {}
+    }
+    return null;
   }
 }

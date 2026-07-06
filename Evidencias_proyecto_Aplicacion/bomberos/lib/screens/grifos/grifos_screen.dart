@@ -118,6 +118,7 @@ class _GrifosScreenState extends State<GrifosScreen> with SingleTickerProviderSt
                 GrifosMapaTab(
                   resultados: _resultados,
                   onResultados: _actualizarResultados,
+                  perfil: widget.perfil,
                   onEditar: _editarGrifo,
                 ),
                 GrifosListaTab(

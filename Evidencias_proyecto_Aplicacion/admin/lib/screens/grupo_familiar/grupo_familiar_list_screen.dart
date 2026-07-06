@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../models/grupo_familiar_list_item.dart';
+import '../../services/admin_edit_service.dart';
 import '../../services/grupo_familiar_service.dart';
 import '../../theme/admin_theme.dart';
 import '../../utils/filtro_ubicacion_lista.dart';
 import '../../widgets/admin_action_bar.dart';
+import '../../widgets/admin_edit_sheets.dart';
 import '../../widgets/admin_header.dart';
 import '../../widgets/admin_lista_filtros_ubicacion.dart';
 import '../../widgets/admin_lista_pie_paginacion.dart';
@@ -192,8 +194,26 @@ class _GrupoFamiliarListScreenState extends State<GrupoFamiliarListScreen> {
     }
   }
 
-  void _proximamente(String accion) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$accion — próximamente.')));
+
+  Future<void> _eliminarGrupo(GrupoFamiliarListItem g) async {
+    final ok = await AdminEditSheets.confirmarEliminar(
+      context,
+      titulo: 'Eliminar grupo familiar',
+      mensaje:
+          'Se eliminará el grupo ${g.rutFormateado} (${g.direccion}), '
+          'incluyendo integrantes, mascotas y registros de vivienda. '
+          'Esta acción no se puede deshacer.',
+    );
+    if (ok != true) return;
+    try {
+      await AdminEditService(Supabase.instance.client).eliminarGrupoFamiliar(g.idGrupof);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Grupo eliminado.')));
+        _cargarInicial();
+      }
+    } catch (e) {
+      if (mounted) AdminEditSheets.showError(context, e);
+    }
   }
 
   List<GrupoFamiliarListItem> get _filtrados {
@@ -236,11 +256,6 @@ class _GrupoFamiliarListScreenState extends State<GrupoFamiliarListScreen> {
               onChanged: _onFiltrosCambiados,
               onIdChanged: _onIdCambiado,
               onBusquedaChanged: () => setState(() {}),
-              trailing: AdminPrimaryButton(
-                label: 'Agregar Grupo Familiar',
-                icon: Icons.add,
-                onPressed: () => _proximamente('Agregar grupo familiar'),
-              ),
             ),
           ),
         ),
@@ -273,12 +288,12 @@ class _GrupoFamiliarListScreenState extends State<GrupoFamiliarListScreen> {
                                     ? _TablaDesktop(
                                         grupos: filtrados,
                                         onVerDetalle: widget.onVerDetalle,
-                                        onEliminar: () => _proximamente('Eliminar'),
+                                        onEliminar: _eliminarGrupo,
                                       )
                                     : _ListaMobile(
                                         grupos: filtrados,
                                         onVerDetalle: widget.onVerDetalle,
-                                        onEliminar: () => _proximamente('Eliminar'),
+                                        onEliminar: _eliminarGrupo,
                                       ),
                               ),
                             ),
@@ -310,7 +325,7 @@ class _TablaDesktop extends StatelessWidget {
 
   final List<GrupoFamiliarListItem> grupos;
   final ValueChanged<int> onVerDetalle;
-  final VoidCallback onEliminar;
+  final ValueChanged<GrupoFamiliarListItem> onEliminar;
 
   static const _headerStyle = TextStyle(
     fontSize: 11,
@@ -341,7 +356,7 @@ class _TablaDesktop extends StatelessWidget {
         ...grupos.map((g) => _FilaDesktop(
               grupo: g,
               onVerDetalle: () => onVerDetalle(g.idGrupof),
-              onEliminar: onEliminar,
+              onEliminar: () => onEliminar(g),
             )),
       ],
     );
@@ -432,7 +447,7 @@ class _ListaMobile extends StatelessWidget {
 
   final List<GrupoFamiliarListItem> grupos;
   final ValueChanged<int> onVerDetalle;
-  final VoidCallback onEliminar;
+  final ValueChanged<GrupoFamiliarListItem> onEliminar;
 
   @override
   Widget build(BuildContext context) {
@@ -470,7 +485,7 @@ class _ListaMobile extends StatelessWidget {
                 runSpacing: 8,
                 children: [
                   AdminOutlineButton(label: 'Ver Detalle', onPressed: () => onVerDetalle(g.idGrupof)),
-                  AdminDangerButton(label: 'Eliminar', onPressed: onEliminar),
+                  AdminDangerButton(label: 'Eliminar', onPressed: () => onEliminar(g)),
                 ],
               ),
             ],

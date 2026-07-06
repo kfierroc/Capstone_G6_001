@@ -90,6 +90,52 @@ class BomberosAdminService {
     return PaginaLista(items: items, hayMas: hayMas);
   }
 
+  Future<BomberoListItem?> obtenerPorRut(int rutNum) async {
+    try {
+      final row = await _client
+          .from('bombero')
+          .select(
+            'rut_num, rut_dv, nomb_bombero, ape_p_bombero, is_admin, user_id, '
+            'companias_bomberos(nombre, id_compania, cut_com, comunas(comuna))',
+          )
+          .eq('rut_num', rutNum)
+          .maybeSingle();
+      if (row == null) return null;
+      return _mapItem(row);
+    } catch (_) {
+      try {
+        final row = await _client
+            .from('bombero')
+            .select(
+              'rut_num, rut_dv, nomb_bombero, ape_p_bombero, is_admin, user_id, '
+              'companias_bomberos(nombre, id_compania, cut_com)',
+            )
+            .eq('rut_num', rutNum)
+            .maybeSingle();
+        if (row == null) return null;
+        final item = _mapItem(row);
+        if (item == null) return null;
+        final cut = _nestedInt(_nestedMap(row['companias_bomberos']), 'cut_com');
+        if (cut == null) return item;
+        final comunas = await _mapComunas({cut});
+        return BomberoListItem(
+          rutNum: item.rutNum,
+          rutFormateado: item.rutFormateado,
+          nombBombero: item.nombBombero,
+          apePBombero: item.apePBombero,
+          nombreCompleto: item.nombreCompleto,
+          compania: item.compania,
+          idCompania: item.idCompania,
+          comuna: comunas[cut] ?? item.comuna,
+          esAdmin: item.esAdmin,
+          tieneCuenta: item.tieneCuenta,
+        );
+      } catch (_) {
+        return null;
+      }
+    }
+  }
+
   BomberoListItem? _mapItem(dynamic row) {
     if (row is! Map) return null;
     final m = Map<String, dynamic>.from(row);

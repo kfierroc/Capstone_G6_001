@@ -10,6 +10,8 @@ class StatCard extends StatelessWidget {
     required this.footerIcon,
     required this.footerText,
     required this.footerColor,
+    this.icon,
+    this.accentColor,
   });
 
   final String title;
@@ -17,9 +19,13 @@ class StatCard extends StatelessWidget {
   final IconData footerIcon;
   final String footerText;
   final Color footerColor;
+  final IconData? icon;
+  final Color? accentColor;
 
   @override
   Widget build(BuildContext context) {
+    final accent = accentColor ?? AdminTheme.infoBlue;
+
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -30,15 +36,33 @@ class StatCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            title,
-            style: const TextStyle(
-              fontSize: 13,
-              color: AdminTheme.mutedText,
-              fontWeight: FontWeight.w500,
-            ),
+          Row(
+            children: [
+              if (icon != null) ...[
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: accent.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(icon, size: 22, color: accent),
+                ),
+                const SizedBox(width: 12),
+              ],
+              Expanded(
+                child: Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    color: AdminTheme.mutedText,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 12),
           Text(
             value,
             style: const TextStyle(

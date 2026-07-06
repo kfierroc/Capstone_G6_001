@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../models/residencia_admin_detalle.dart';
+import '../../services/admin_edit_service.dart';
 import '../../services/residencias_admin_service.dart';
 import '../../theme/admin_theme.dart';
 import '../../utils/filtro_ubicacion_lista.dart';
 import '../../widgets/admin_action_bar.dart';
+import '../../widgets/admin_edit_sheets.dart';
 import '../../widgets/admin_header.dart';
 import '../../widgets/admin_lista_filtros_ubicacion.dart';
 import '../../widgets/admin_lista_pie_paginacion.dart';
@@ -101,8 +103,25 @@ class _ResidenciasListScreenState extends State<ResidenciasListScreen> {
     }
   }
 
-  void _proximamente(String accion) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$accion — próximamente.')));
+
+  Future<void> _eliminarResidencia(ResidenciaListItem r) async {
+    final ok = await AdminEditSheets.confirmarEliminar(
+      context,
+      titulo: 'Eliminar residencia',
+      mensaje:
+          'Se eliminará la residencia #${r.idResidencia} (${r.direccion}, ${r.comuna}). '
+          'Esta acción no se puede deshacer.',
+    );
+    if (ok != true) return;
+    try {
+      await AdminEditService(Supabase.instance.client).eliminarResidencia(r.idResidencia);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Residencia eliminada.')));
+        _cargarInicial();
+      }
+    } catch (e) {
+      if (mounted) AdminEditSheets.showError(context, e);
+    }
   }
 
   List<ResidenciaListItem> get _filtrados {
@@ -144,12 +163,7 @@ class _ResidenciasListScreenState extends State<ResidenciasListScreen> {
               busquedaHint: 'Buscar por dirección o estado...',
               onChanged: _onFiltrosCambiados,
               onIdChanged: _onIdCambiado,
-              onBusquedaChanged: () => setState(() {}),
-              trailing: AdminPrimaryButton(
-                label: 'Agregar Residencia',
-                icon: Icons.add,
-                onPressed: () => _proximamente('Agregar residencia'),
-              ),
+              onBusquedaChanged: () => setState(() {})
             ),
           ),
         ),
@@ -182,12 +196,12 @@ class _ResidenciasListScreenState extends State<ResidenciasListScreen> {
                                     ? _TablaDesktop(
                                         residencias: filtrados,
                                         onVerDetalle: widget.onVerDetalle,
-                                        onEliminar: () => _proximamente('Eliminar'),
+                                        onEliminar: _eliminarResidencia,
                                       )
                                     : _ListaMobile(
                                         residencias: filtrados,
                                         onVerDetalle: widget.onVerDetalle,
-                                        onEliminar: () => _proximamente('Eliminar'),
+                                        onEliminar: _eliminarResidencia,
                                       ),
                               ),
                             ),
@@ -219,7 +233,7 @@ class _TablaDesktop extends StatelessWidget {
 
   final List<ResidenciaListItem> residencias;
   final ValueChanged<int> onVerDetalle;
-  final VoidCallback onEliminar;
+  final ValueChanged<ResidenciaListItem> onEliminar;
 
   static const _headerStyle = TextStyle(
     fontSize: 11,
@@ -251,7 +265,7 @@ class _TablaDesktop extends StatelessWidget {
           (r) => _FilaDesktop(
             residencia: r,
             onVerDetalle: () => onVerDetalle(r.idResidencia),
-            onEliminar: onEliminar,
+            onEliminar: () => onEliminar(r),
           ),
         ),
       ],
@@ -371,7 +385,7 @@ class _ListaMobile extends StatelessWidget {
 
   final List<ResidenciaListItem> residencias;
   final ValueChanged<int> onVerDetalle;
-  final VoidCallback onEliminar;
+  final ValueChanged<ResidenciaListItem> onEliminar;
 
   @override
   Widget build(BuildContext context) {
@@ -412,7 +426,7 @@ class _ListaMobile extends StatelessWidget {
                 runSpacing: 8,
                 children: [
                   AdminOutlineButton(label: 'Ver Detalle', onPressed: () => onVerDetalle(r.idResidencia)),
-                  AdminDangerButton(label: 'Eliminar', onPressed: onEliminar),
+                  AdminDangerButton(label: 'Eliminar', onPressed: () => onEliminar(r)),
                 ],
               ),
             ],

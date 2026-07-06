@@ -17,6 +17,7 @@ class AdminListaFiltrosUbicacion extends StatefulWidget {
     this.busquedaController,
     this.idHint = 'Buscar por ID...',
     this.busquedaHint,
+    this.mostrarCampoId = true,
     this.trailing,
   });
 
@@ -24,6 +25,7 @@ class AdminListaFiltrosUbicacion extends StatefulWidget {
   final TextEditingController? busquedaController;
   final String idHint;
   final String? busquedaHint;
+  final bool mostrarCampoId;
   final VoidCallback onChanged;
   final VoidCallback? onIdChanged;
   final VoidCallback? onBusquedaChanged;
@@ -41,6 +43,22 @@ class AdminListaFiltrosUbicacionState extends State<AdminListaFiltrosUbicacion> 
   int? get cutRegFiltro => _cutReg;
   int? get cutComFiltro => _cutCom;
   Map<int, int> get comunaARegion => _catalogo?.comunaARegion ?? const {};
+
+  /// Etiqueta legible del filtro activo (p. ej. «Región de Valparaíso · Viña del Mar»).
+  String get etiquetaFiltroActivo {
+    if (_catalogo == null) return 'Cargando…';
+    if (_cutCom != null) {
+      for (final c in _catalogo!.comunas) {
+        if (c.cutCom == _cutCom) return '${c.regionNombre} · ${c.nombre}';
+      }
+    }
+    if (_cutReg != null) {
+      for (final r in _catalogo!.regiones) {
+        if (r.id == _cutReg) return r.label;
+      }
+    }
+    return 'Todo Chile';
+  }
 
   @override
   void initState() {
@@ -70,8 +88,10 @@ class AdminListaFiltrosUbicacionState extends State<AdminListaFiltrosUbicacion> 
                   Expanded(flex: 2, child: _dropdownRegion()),
                   const SizedBox(width: 12),
                   Expanded(flex: 2, child: _dropdownComuna()),
-                  const SizedBox(width: 12),
-                  Expanded(flex: 2, child: _campoId()),
+                  if (widget.mostrarCampoId) ...[
+                    const SizedBox(width: 12),
+                    Expanded(flex: 2, child: _campoId()),
+                  ],
                   if (widget.busquedaController != null) ...[
                     const SizedBox(width: 12),
                     Expanded(
@@ -95,8 +115,10 @@ class AdminListaFiltrosUbicacionState extends State<AdminListaFiltrosUbicacion> 
                   _dropdownRegion(),
                   const SizedBox(height: 12),
                   _dropdownComuna(),
-                  const SizedBox(height: 12),
-                  _campoId(),
+                  if (widget.mostrarCampoId) ...[
+                    const SizedBox(height: 12),
+                    _campoId(),
+                  ],
                   if (widget.busquedaController != null) ...[
                     const SizedBox(height: 12),
                     AdminSearchBar(
